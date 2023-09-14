@@ -5,5 +5,5 @@ import reflex as rx
 
 config = rx.Config(
     app_name="logit",
-    api_url="http:/0.0.0.0:8800"
+    # api_url="http:/0.0.0.0:8800"
 )

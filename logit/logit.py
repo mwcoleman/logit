@@ -1,53 +1,73 @@
 import reflex as rx
-
-class State(rx.State):
-    question: str
-    chat_history: list[tuple[str, str]]
+from logit.weightsapp import WState
+# class State(rx.State):
+#     question: str
+#     chat_history: list[tuple[str, str]]
     
-    def set_question(self, question: str):
-        self.question = question
+#     def set_question(self, question: str):
+#         self.question = question
     
-    def answer(self):
-        # chatbt here
-        answer = "non lo so"
-        self.chat_history.append((self.question, answer))
-        self.question = ""
+#     def answer(self):
+#         # chatbt here
+#         answer = "non lo so"
+#         self.chat_history.append((self.question, answer))
+#         self.question = ""
 
 
-def qa(question: str, answer: str) -> rx.Component:
-    return rx.box(
-        rx.box(question, text_align="right"),
-        rx.box(answer, text_align="left"),
-        margin_y="1em",
+def set_row(total_set_number: int, exercise: str, set: int, reps: int, weight: float) -> rx.Component:
+    return rx.hstack(
+        rx.box(total_set_number),
+        rx.box(exercise),
+        rx.box(set),
+        rx.box(reps),
+        rx.box(weight),
+        rx.button(
+            on_click=lambda: WState.delete_row(total_set_number)
+        )
+        # margin_y="1em",
     )
 
 
-def chat() -> rx.Component:
+def exercise_list() -> rx.Component:
     # Returns a box, of QA pair boxes, given qa_pair strings below
 
-    return rx.box(
-        rx.foreach(
-            State.chat_history,
-            lambda messages: qa(messages[0], messages[1])
-        )
+    return rx.hstack(
+        rx.box(
+            rx.foreach(
+                WState.session_history,
+                lambda row: set_row(row[0], row[1], row[2], row[3], row[4])
+            ) 
+        ),
+
     )
 
-def action_bar() -> rx.Component:
+def log_exercise() -> rx.Component:
     return rx.hstack(
-        rx.input(
-            value=State.question,
-            placeholder="Ask ye question",
-            on_change=State.set_question),
+        
+        rx.select(
+            WState.exercises,
+            default_value=WState.exercises[0],
+            on_change=WState.current_exercise
+        ),
+        
+        rx.number_input(
+            on_change=WState.set_reps),
+        
+        rx.number_input(
+            on_change=WState.set_weight),
+        
         rx.button(
-            "Ask it",
-            on_click=State.answer),
+            on_click=WState.add_set
+        )
+        
     )
 
 
 def index() -> rx.Component:
     return rx.container(
-        chat(),
-        action_bar())
+        log_exercise(),
+        exercise_list(),
+    )
 
 app = rx.App()
 app.add_page(index)
