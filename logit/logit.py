@@ -14,40 +14,67 @@ from logit.weightsapp import WState
 #         self.question = ""
 
 
-def set_row(total_set_number: int, exercise: str, set: int, reps: int, weight: float) -> rx.Component:
+def set_row(exercise_number: int, exercise: str, set: int, reps: int, weight: float) -> rx.Component:
     return rx.hstack(
-        rx.box(total_set_number),
+        rx.box(exercise_number),
         rx.box(exercise),
         rx.box(set),
         rx.box(reps),
         rx.box(weight),
         rx.button(
-            on_click=lambda: WState.delete_row(total_set_number)
+            on_click=lambda: WState.delete_row(exercise_number)
         )
         # margin_y="1em",
     )
 
-
-def exercise_list() -> rx.Component:
-    # Returns a box, of QA pair boxes, given qa_pair strings below
-
-    return rx.hstack(
-        rx.box(
-            rx.foreach(
-                WState.session_history,
-                lambda row: set_row(row[0], row[1], row[2], row[3], row[4])
-            ) 
-        ),
-
+def get_exercise_details(ex):
+    return rx.tr(
+        rx.td(ex.idx),
+        rx.td(ex.ename),
+        rx.td(ex.enum),
+        rx.td(ex.reps),
+        rx.td(ex.weight),
+        rx.td(
+            rx.button(
+                "X",
+                on_click=lambda: WState.delete_logged_exercise(ex.idx)
+            )
+        )
     )
 
-def log_exercise() -> rx.Component:
+def exercise_list() -> rx.Component:
+
+    return rx.vstack(
+        rx.heading(("Session Log")),
+        rx.table_container(
+            rx.table(
+                rx.thead(
+                    rx.tr(
+                        rx.th("Tot#"),
+                        rx.th("Exercise"),
+                        rx.th("Set"),
+                        rx.th("Reps"),
+                        rx.th("Kg"),
+                        rx.th("Delete")
+                    )
+                ),
+                rx.tbody(
+                    rx.foreach(
+                        WState.logged_exercises,
+                        lambda ex: get_exercise_details(ex)
+                    )
+                )
+            )   
+        )
+    ) 
+
+def new_exercise_selector() -> rx.Component:
     return rx.hstack(
         
         rx.select(
-            WState.exercises,
-            default_value=WState.exercises[0],
-            on_change=WState.current_exercise
+            WState.exercise_names,
+            default_value=WState.current_exercise,
+            on_change=WState.set_current_exercise
         ),
         
         rx.number_input(
@@ -57,7 +84,7 @@ def log_exercise() -> rx.Component:
             on_change=WState.set_weight),
         
         rx.button(
-            on_click=WState.add_set
+            on_click=WState.add_logged_exercise
         )
         
     )
@@ -65,7 +92,7 @@ def log_exercise() -> rx.Component:
 
 def index() -> rx.Component:
     return rx.container(
-        log_exercise(),
+        new_exercise_selector(),
         exercise_list(),
     )
 
