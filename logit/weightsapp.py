@@ -3,17 +3,18 @@ from collections import defaultdict
 import os
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 from typing import Optional
+from datetime import date, datetime
 class LoggedExercise(rx.Model, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    idx: int
+    # idx: int
     ename: str
     enum: int
     reps: int
     weight: float
     # _li: list
 
-    def __init__(self, idx, ename, enum, reps, weight):
-        self.idx: int = idx
+    def __init__(self, ename, enum, reps, weight):
+        # self.idx: int = idx
         self.ename: str = ename
         self.enum: int = enum
         self.reps: int = reps
@@ -73,10 +74,11 @@ class WState(rx.State):
         
 
     def add_logged_exercise(self):
+        # TODO: Not necessary once date/name db filtering implemented
         self.exercise_counter[self.current_exercise] += 1
 
         new_exercise = LoggedExercise(
-                self.total_set_number,
+                # self.total_set_number,
                 self.current_exercise,
                 self.exercise_counter[self.current_exercise],
                 self.reps,
@@ -90,15 +92,6 @@ class WState(rx.State):
             session.commit()
             # print(new_exercise.id)
 
-        # self.logged_exercises.append(
-        #     LoggedExercise(
-        #         self.total_set_number,
-        #         self.current_exercise,
-        #         self.exercise_counter[self.current_exercise],
-        #         self.reps,
-        #         self.weight
-        #     )
-        # )
         self.total_set_number += 1
     
     @rx.var
@@ -119,60 +112,4 @@ class WState(rx.State):
 
 
     
-    # def exercise_details(ex: LoggedExercise) -> list:
-    #     return [ex.idx, ex.ename, ex.enum, ex.reps, ex.weight]
-
-
-# class WState(rx.State):
-#     # TODO: Reflex doesn't have defaultdict implementation? This defaults to reflex.vars.dict
-    
-#     total_set_number: int = 0
-#     sets: defaultdict = defaultdict(int)
-#     reps: int = 0
-#     weight: float = 0
-
-#     exercises: list[str] = [
-#         "deadlift",
-#         "benchpress",
-#         "weighted pull-up",
-#         "single arm press",
-#         "kb swing",
-#         "HB: SC 20mm",
-#         "HB: IMR 20mm",
-#         "HB: MRP 20mm",
-#         "HB: IM 20mm",
-#         "HB: MR 20mm"
-#     ]
-
-#     exercise: str = exercises[0]
-
-#     session_history: list[tuple[int,int,float]]
-
-#     # @rx.var
-#     def current_exercise(self, exercise: str):
-#         self.exercise = exercise
-#         # return self.exercises[self.exptr]
-    
-#     def set_reps(self, reps: int):
-#         self.reps = reps
-
-#     def set_weight(self, weight: float):
-#         self.weight = weight
-
-#     def delete_row(self, set_number):
-#         self.total_set_number -= 1
-#         self.session_history.pop(set_number - 1)
-#         self.session_history = [(idx + 1, *row[1:]) for idx, row in enumerate(self.session_history)]
-
-
-#     def add_set(self):
-#         print(type(self.sets))
-#         # exercise = self.current_exercise()
-#         self.total_set_number += 1
-#         try:
-#             self.sets[self.exercise] += 1
-#         except:
-#             self.sets[self.exercise] = 1
-
-#         self.session_history.append((self.total_set_number, self.exercise, self.sets[self.exercise], self.reps, self.weight))
-    
+ 

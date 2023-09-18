@@ -29,8 +29,8 @@ def set_row(exercise_number: int, exercise: str, set: int, reps: int, weight: fl
 
 def get_exercise_details(ex):
     return rx.tr(
-        rx.td(ex.id),
-        rx.td(ex.idx),
+        # rx.td(ex.id),
+        # rx.td(ex.idx),
         rx.td(ex.ename),
         rx.td(ex.enum),
         rx.td(ex.reps),
@@ -51,8 +51,8 @@ def exercise_list() -> rx.Component:
             rx.table(
                 rx.thead(
                     rx.tr(
-                        rx.th("ID"),
-                        rx.th("Tot#"),
+                        # rx.th("ID"),
+                        # rx.th("Tot#"),
                         rx.th("Exercise"),
                         rx.th("Set"),
                         rx.th("Reps"),
