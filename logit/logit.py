@@ -38,7 +38,7 @@ def get_exercise_details(ex):
         rx.td(
             rx.button(
                 "X",
-                on_click=lambda: WState.delete_logged_exercise(ex.idx)
+                on_click=lambda: WState.delete_logged_exercise(ex.id)
             )
         )
     )
@@ -46,7 +46,7 @@ def get_exercise_details(ex):
 def exercise_list() -> rx.Component:
 
     return rx.vstack(
-        rx.heading(("Session Log")),
+        rx.heading(("")),
         rx.table_container(
             rx.table(
                 rx.thead(

@@ -35,6 +35,7 @@ class WState(rx.State):
 
 
     exercise_names: list[str] = [
+        "Scan",
         "deadlift",
         "benchpress",
         "weighted pull-up",
@@ -54,32 +55,40 @@ class WState(rx.State):
     reps: int = 0
     weight: float = 0
     
-    def delete_logged_exercise(self, idx:int):
-        # Adjust other exercise idx
-        for ex in self.logged_exercises[idx:]:
-            ex.idx -= 1
-        # Adjust current total sets
-        self.total_set_number -= 1
+    def delete_logged_exercise(self, id:int):
+        with rx.session() as session:
+            statement = select(LoggedExercise).where(LoggedExercise.id == id)
+            result = session.exec(statement).first()
+            session.delete(result)
+            session.commit()
 
-        del self.logged_exercises[idx - 1] 
+
+        # # Adjust other exercise idx
+        # for ex in self.logged_exercises[idx:]:
+        #     ex.idx -= 1
+        # # Adjust current total sets
+        # self.total_set_number -= 1
+
+        # del self.logged_exercises[idx - 1] 
         
 
     def add_logged_exercise(self):
         self.exercise_counter[self.current_exercise] += 1
 
-        # Add to database
-        with rx.session() as session:
-            session.add(
-            LoggedExercise(
+        new_exercise = LoggedExercise(
                 self.total_set_number,
                 self.current_exercise,
                 self.exercise_counter[self.current_exercise],
                 self.reps,
                 self.weight
-            )
-
+        )
+        # Add to database
+        with rx.session() as session:
+            session.add(
+                new_exercise
             )
             session.commit()
+            # print(new_exercise.id)
 
         # self.logged_exercises.append(
         #     LoggedExercise(
