@@ -1,11 +1,16 @@
 import reflex as rx
 from collections import defaultdict
 import os
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from sqlmodel import Field, Session, SQLModel, create_engine, select, TIMESTAMP, Column, text
 from typing import Optional
-from datetime import date, datetime
+from datetime import datetime, date
+from sqlalchemy.sql import func
+from sqlalchemy import Column, DateTime
+# from datetime import date, datetime
 class LoggedExercise(rx.Model, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    # TODO: This was going to be server-created but too many issues with sqlite..
+    created_datetime: str
     # idx: int
     ename: str
     enum: int
@@ -13,8 +18,9 @@ class LoggedExercise(rx.Model, table=True):
     weight: float
     # _li: list
 
-    def __init__(self, ename, enum, reps, weight):
+    def __init__(self, log_date, ename, enum, reps, weight):
         # self.idx: int = idx
+        self.created_datetime: str = log_date
         self.ename: str = ename
         self.enum: int = enum
         self.reps: int = reps
@@ -22,7 +28,7 @@ class LoggedExercise(rx.Model, table=True):
         # self._li = [idx, ename, enum, reps, weight]
 
     def __repr__(self) -> str:
-        return f'{self.idx},{self.ename},{self.enum},{self.reps},{self.weight}'
+        return f'{self.ename},{self.enum},{self.reps},{self.weight}'
     
     # def __iter__(self):
     #     return self._li
@@ -79,6 +85,7 @@ class WState(rx.State):
 
         new_exercise = LoggedExercise(
                 # self.total_set_number,
+                date.today().strftime("%d-%m-%y"),
                 self.current_exercise,
                 self.exercise_counter[self.current_exercise],
                 self.reps,
