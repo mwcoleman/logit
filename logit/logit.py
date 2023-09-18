@@ -29,6 +29,7 @@ def set_row(exercise_number: int, exercise: str, set: int, reps: int, weight: fl
 
 def get_exercise_details(ex):
     return rx.tr(
+        rx.td(ex.id),
         rx.td(ex.idx),
         rx.td(ex.ename),
         rx.td(ex.enum),
@@ -50,6 +51,7 @@ def exercise_list() -> rx.Component:
             rx.table(
                 rx.thead(
                     rx.tr(
+                        rx.th("ID"),
                         rx.th("Tot#"),
                         rx.th("Exercise"),
                         rx.th("Set"),
@@ -60,7 +62,8 @@ def exercise_list() -> rx.Component:
                 ),
                 rx.tbody(
                     rx.foreach(
-                        WState.logged_exercises,
+                        # WState.logged_exercises,
+                        WState.iterate_logged_exercises,
                         lambda ex: get_exercise_details(ex)
                     )
                 )
@@ -94,6 +97,8 @@ def index() -> rx.Component:
     return rx.container(
         new_exercise_selector(),
         exercise_list(),
+        rx.text("HI")
+        # rx.button(on_click=WState.iterate_logged_exercises)
     )
 
 app = rx.App()

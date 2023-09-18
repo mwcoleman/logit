@@ -1,40 +1,38 @@
 import reflex as rx
 from collections import defaultdict
-import pandas as pd
 import os
-
-
+from sqlmodel import Field, Session, SQLModel, create_engine, select
+from typing import Optional
 class LoggedExercise(rx.Model, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
     idx: int
     ename: str
     enum: int
     reps: int
     weight: float
-    _li: list
+    # _li: list
 
     def __init__(self, idx, ename, enum, reps, weight):
-        self.idx = idx
-        self.ename = ename
-        self.enum = enum
-        self.reps = reps
-        self.weight = weight
-        self._li = [idx, ename, enum, reps, weight]
+        self.idx: int = idx
+        self.ename: str = ename
+        self.enum: int = enum
+        self.reps: int = reps
+        self.weight: float = weight
+        # self._li = [idx, ename, enum, reps, weight]
 
     def __repr__(self) -> str:
         return f'{self.idx},{self.ename},{self.enum},{self.reps},{self.weight}'
     
-    def __iter__(self):
-        return self._li
+    # def __iter__(self):
+    #     return self._li
 
-    def __getitem__(self, item):
-        return self._li[item]
+    # def __getitem__(self, item):
+    #     return self._li[item]
 
 class WState(rx.State):
     
-    logged_exercises: list[LoggedExercise]
-    # [
-    #     LoggedExercise(1,"Testing", 1, 5, 100),
-    # ]
+    # logged_exercises: list[LoggedExercise]
+
 
     exercise_names: list[str] = [
         "deadlift",
@@ -68,8 +66,10 @@ class WState(rx.State):
 
     def add_logged_exercise(self):
         self.exercise_counter[self.current_exercise] += 1
-        
-        self.logged_exercises.append(
+
+        # Add to database
+        with rx.session() as session:
+            session.add(
             LoggedExercise(
                 self.total_set_number,
                 self.current_exercise,
@@ -77,8 +77,38 @@ class WState(rx.State):
                 self.reps,
                 self.weight
             )
-        )
+
+            )
+            session.commit()
+
+        # self.logged_exercises.append(
+        #     LoggedExercise(
+        #         self.total_set_number,
+        #         self.current_exercise,
+        #         self.exercise_counter[self.current_exercise],
+        #         self.reps,
+        #         self.weight
+        #     )
+        # )
         self.total_set_number += 1
+    
+    @rx.var
+    def iterate_logged_exercises(self) -> list[LoggedExercise]:
+        # Computed var processed each time 
+        with rx.session() as session:
+            
+            ## Possible to do it using sqlmodel methods:
+            # statement = select(LoggedExercise)
+            # results = session.exec(statement)
+            # print(results)
+            # for r in results:
+            #     print(r)
+
+            ## But for now we follow reflex method as per https://reflex.dev/docs/database/queries/
+            logged_exercises = session.query(LoggedExercise).all()
+            return logged_exercises
+
+
     
     # def exercise_details(ex: LoggedExercise) -> list:
     #     return [ex.idx, ex.ename, ex.enum, ex.reps, ex.weight]

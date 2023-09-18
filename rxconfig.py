@@ -5,5 +5,6 @@ import reflex as rx
 
 config = rx.Config(
     app_name="logit",
+    db_url="sqlite:///reflex.db"
     # api_url="http:/0.0.0.0:8800"
 )
