@@ -2,7 +2,7 @@ import reflex as rx
 from collections import defaultdict
 import os
 from sqlmodel import Field, Session, SQLModel, create_engine, select, TIMESTAMP, Column, text
-from typing import Optional
+from typing import Optional, List, Dict
 from datetime import datetime, date
 from sqlalchemy.sql import func
 from sqlalchemy import Column, DateTime
@@ -38,10 +38,10 @@ class LoggedExercise(rx.Model, table=True):
 
 class WState(rx.State):
     
-    # logged_exercises: list[LoggedExercise]
 
+    # exercise_selector_count: int = 1
 
-    exercise_names: list[str] = [
+    exercise_names: List[str] = [
         "Scan",
         "deadlift",
         "benchpress",
@@ -55,13 +55,32 @@ class WState(rx.State):
         "HB: MR 20mm"
     ]
 
-    current_exercise: str = exercise_names[0]
 
     total_set_number: int = 1
     exercise_counter: dict = {ename:0 for ename in exercise_names}
-    reps: int = 0
-    weight: float = 0
     
+    current_exercise: Dict[int, str] = {1: exercise_names[0], 2: exercise_names[0], 3: exercise_names[0]}
+    reps: Dict[int, str] = {1: 0, 2: 0, 3: 0}
+    weight: Dict[int, float] = {1: 0, 2: 0, 3: 0}
+
+
+    # def increment_exercise_selector_count(self):
+    #     self.exercise_selector_count += 1
+    
+    # def get_selector_count_range(self) -> List[int]:
+    #     return [i for i in range(self.exercise_selector_count)]
+
+    # Overload the set_... methods to specify the row_id of the selector
+    def set_current_exercise(self, selector_id: int, exercise: str):
+        self.current_exercise[selector_id] = exercise
+
+    def set_weight(self, selector_id: int, weight: float):
+        self.weight[selector_id] = weight
+        
+    def set_reps(self, selector_id: int, reps: int):
+        self.reps[selector_id] = reps
+
+
     def delete_logged_exercise(self, id:int):
         with rx.session() as session:
             statement = select(LoggedExercise).where(LoggedExercise.id == id)
@@ -77,19 +96,22 @@ class WState(rx.State):
         # self.total_set_number -= 1
 
         # del self.logged_exercises[idx - 1] 
-        
+    @staticmethod
+    def today_date() -> str:
+        return date.today().strftime("%d-%m-%y") 
 
-    def add_logged_exercise(self):
+    def add_logged_exercise(self, selector_id: int):
         # TODO: Not necessary once date/name db filtering implemented
-        self.exercise_counter[self.current_exercise] += 1
+        self.exercise_counter[self.current_exercise[selector_id]] += 1
 
         new_exercise = LoggedExercise(
                 # self.total_set_number,
-                date.today().strftime("%d-%m-%y"),
-                self.current_exercise,
-                self.exercise_counter[self.current_exercise],
-                self.reps,
-                self.weight
+                # date.today().strftime("%d-%m-%y"),
+                self.today_date(),
+                self.current_exercise[selector_id],
+                self.exercise_counter[self.current_exercise[selector_id]],
+                self.reps[selector_id],
+                self.weight[selector_id]
         )
         # Add to database
         with rx.session() as session:
@@ -102,7 +124,7 @@ class WState(rx.State):
         self.total_set_number += 1
     
     @rx.var
-    def iterate_logged_exercises(self) -> list[LoggedExercise]:
+    def iterate_logged_exercises(self, date: str = None) -> List[LoggedExercise]:
         # Computed var processed each time 
         with rx.session() as session:
             
@@ -114,9 +136,18 @@ class WState(rx.State):
             #     print(r)
 
             ## But for now we follow reflex method as per https://reflex.dev/docs/database/queries/
-            logged_exercises = session.query(LoggedExercise).all()
+            
+            if date is None:
+                logged_exercises = (
+                    session.query(LoggedExercise)
+                    .filter(LoggedExercise.created_datetime.contains(self.today_date()))
+                    .all()
+                )
+            else:
+                logged_exercises = session.query(LoggedExercise).all()
+
             return logged_exercises
 
 
     
- 
+class VisualiseState(rx.State):
