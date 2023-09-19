@@ -1,4 +1,5 @@
 import reflex as rx
+import plotly.express as px
 from logit.weightsapp import WState
 
 
@@ -80,9 +81,21 @@ def new_exercise_selector(row_id: int) -> rx.Component:
         rx.button(
             "+",
             on_click=lambda: WState.add_logged_exercise(row_id)
-        )
+        ),
+
+
         
-    )
+        )
+
+# def 
+
+
+# def day_trend_plot():
+#     df = WState._log_as_dataframe()
+#     fig = px.line(df.groupby("date").sum(), x='date', y='weight')
+#     return rx.Plotly(data=fig, height="400px")
+#     return rx.Plotly(data=figure, height=height)
+
 ## TODO: Figure this out.. to have a button increment the number of pickers on screen
 # def exercise_selectors() -> rx.Component:
     
@@ -104,21 +117,30 @@ def index() -> rx.Component:
 
     # )
 
-    return rx.center(
-        rx.grid(
-            # *exercise_selectors(),
+    return rx.container(
+        rx.center(
+            rx.grid(
+                # *exercise_selectors(),
 
-            rx.grid_item(
-                new_exercise_selector(row_id=1), row_span=1, col_span=1, align_self="center"
-            ),
-            rx.grid_item(
-                new_exercise_selector(row_id=2), row_span=1, col_span=1, align_self="center"
-            ),
+                rx.grid_item(
+                    new_exercise_selector(row_id=1), row_span=1, col_span=1, align_self="center"
+                ),
+                rx.grid_item(
+                    new_exercise_selector(row_id=2), row_span=1, col_span=1, align_self="center"
+                ),
 
-            rx.grid_item(
-                exercise_list(), row_span=1, col_span=1, align_self="center"
-            ),
-            # template_columns="repeat(4, 1fr)",
+                rx.grid_item(
+                    exercise_list(), row_span=1, col_span=1, align_self="center"
+                ),
+                # template_columns="repeat(4, 1fr)",
+                # rx.grid_item(
+                #     rx.data_table(
+                #         data=WState.log_as_dataframe
+                #     )
+                # ),
+                # rx.button(on_click=WState._day_stats),
+                rx.plotly(WState.fig)
+            )
         )
     )
 
