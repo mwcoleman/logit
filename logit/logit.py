@@ -1,6 +1,8 @@
 import reflex as rx
 import plotly.express as px
 from logit.weightsapp import WState
+import pandas as pd
+# from weightsapp import LoggedExercise
 
 
 # def set_row(exercise_number: int, exercise: str, set: int, reps: int, weight: float) -> rx.Component:
@@ -87,6 +89,35 @@ def new_exercise_selector(row_id: int) -> rx.Component:
         
         )
 
+# def get_figure():
+#     with rx.session() as session:
+#         ex_list = session.query(LoggedExercise).all()
+
+#     ex_list = [ex._li() for ex in ex_list]  
+
+#     data_columns = ["date", "ename", "enum", "reps", "kg"]
+#     data_types = {'ename':str, 'enum': int, 'reps': int, 'kg': float}
+
+#     df = pd.DataFrame(
+#         ex_list,
+#         columns=data_columns
+#     ).astype(data_types)
+
+#     df = df[df.ename == 'Scan']
+#     df['date'] = df.date.apply(lambda x: datetime.datetime.strptime(x, "%d-%m-%y"))
+#     df['load'] = df.reps * df.kg
+
+#     grpby = df.groupby('date').aggregate(
+#         vol=("reps", np.sum),
+#         intensity=("kg", np.max),
+#         load=("load",np.sum)
+#     )
+
+#     fig = go.Figure( data = [
+#         go.Line(name="Weight", x=grpby.index, y=df['vol'])]
+#     )
+#     return fig
+
 # def 
 
 
@@ -139,7 +170,7 @@ def index() -> rx.Component:
                 #     )
                 # ),
                 # rx.button(on_click=WState._day_stats),
-                rx.plotly(WState.fig)
+                # rx.plotly(WState._day_stats)
             )
         )
     )

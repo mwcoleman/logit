@@ -79,7 +79,7 @@ class WState(rx.State):
     # Used for selecting dates when returning log
     datepicker: str = None
 
-    visualise_ename: str = ""
+    visualise_ename: str = "Scan"
 
     # Overload the set_... methods to specify the row_id of the selector
     def set_current_exercise(self, selector_id: int, exercise: str):
@@ -199,24 +199,24 @@ class WState(rx.State):
             columns=data_columns
         ).astype(data_types)
     
-    # # @rx.var
-    def _day_stats(self):
-        df = self._log_as_dataframe()
+    # @rx.var
+    # def _day_stats(self) -> go.Figure:
+    #     df = self._log_as_dataframe()
 
-        df['date'] = df.date.apply(lambda x: datetime.datetime.strptime(x, "%d-%m-%y"))
-        df = df[df.ename == self.visualise_ename]
-        df['load'] = df.reps * df.kg
+    #     df['date'] = df.date.apply(lambda x: datetime.datetime.strptime(x, "%d-%m-%y"))
+    #     df = df[df.ename == self.visualise_ename]
+    #     df['load'] = df.reps * df.kg
 
-        grpby = df.groupby('date').aggregate(
-            vol=("reps", np.sum),
-            intensity=("kg", np.max),
-            load=("load",np.sum)
-        )
+    #     grpby = df.groupby('date').aggregate(
+    #         vol=("reps", np.sum),
+    #         intensity=("kg", np.max),
+    #         load=("load",np.sum)
+    #     )
 
-        self.fig = go.Figure( data = [
-            go.Line(name="Weight", x=grpby.index, y=df['vol'])]
-        )
-        # return fig
+    #     fig = go.Figure( data = [
+    #         go.Line(name="Weight", x=grpby.index, y=df['vol'])]
+    #     )
+    #     return fig
         
 
 
