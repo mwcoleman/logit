@@ -147,7 +147,6 @@ class WState(rx.State):
                 )
             )
             session.commit()
-            self._day_stats()
             # print(new_exercise.id)
         # self.countdown(selector_id)
         # self.total_set_number += 1

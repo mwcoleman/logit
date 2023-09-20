@@ -1,22 +1,14 @@
 import reflex as rx
 import plotly.express as px
-from logit.weightsapp import WState
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+import numpy as np
 import pandas as pd
-# from weightsapp import LoggedExercise
+import os, datetime
 
-
-# def set_row(exercise_number: int, exercise: str, set: int, reps: int, weight: float) -> rx.Component:
-#     return rx.hstack(
-#         rx.box(exercise_number),
-#         rx.box(exercise),
-#         rx.box(set),
-#         rx.box(reps),
-#         rx.box(weight),
-#         rx.button(
-#             on_click=lambda: WState.delete_row(exercise_number)
-#         )
-#         # margin_y="1em",
-#     )
+from logit.weightsapp import WState
+from logit.weightsapp import LoggedExercise
 
 def get_exercise_details(ex):
     return rx.tr(
@@ -89,34 +81,58 @@ def new_exercise_selector(row_id: int) -> rx.Component:
         
         )
 
-# def get_figure():
-#     with rx.session() as session:
-#         ex_list = session.query(LoggedExercise).all()
+def get_stats() -> pd.DataFrame:
+    with rx.session() as session:
+        ex_list = session.query(LoggedExercise).all()
 
-#     ex_list = [ex._li() for ex in ex_list]  
+    ex_list = [ex._li() for ex in ex_list]  
 
-#     data_columns = ["date", "ename", "enum", "reps", "kg"]
-#     data_types = {'ename':str, 'enum': int, 'reps': int, 'kg': float}
+    data_columns = ["date", "ename", "enum", "reps", "kg"]
+    data_types = {'ename':str, 'enum': int, 'reps': int, 'kg': float}
 
-#     df = pd.DataFrame(
-#         ex_list,
-#         columns=data_columns
-#     ).astype(data_types)
+    df = pd.DataFrame(
+        ex_list,
+        columns=data_columns
+    ).astype(data_types)
 
-#     df = df[df.ename == 'Scan']
-#     df['date'] = df.date.apply(lambda x: datetime.datetime.strptime(x, "%d-%m-%y"))
-#     df['load'] = df.reps * df.kg
+    df['date'] = df.date.apply(lambda x: datetime.datetime.strptime(x, "%d-%m-%y"))
+    df['load'] = df.reps * df.kg
 
-#     grpby = df.groupby('date').aggregate(
-#         vol=("reps", np.sum),
-#         intensity=("kg", np.max),
-#         load=("load",np.sum)
-#     )
+    grpby = df.groupby(['date','ename'], as_index=False).aggregate(
+        vol=("reps", 'sum'),
+        intensity=("kg", 'max'),
+        load=("load",'sum')
+    )
 
-#     fig = go.Figure( data = [
-#         go.Line(name="Weight", x=grpby.index, y=df['vol'])]
-#     )
-#     return fig
+    return grpby
+
+def strength_figure(df: pd.DataFrame, ename: str) -> go.Figure:
+    # df.columns= ['date', 'ename', 'vol', 'intensity', 'load']
+    metrics = ['load', 'intensity']
+    print(df)
+
+    data = df[df.ename==ename]
+    # fig = px.line(data, x='date', y='intensity', title='intensity')
+    # return fig
+    y_label = ['Total Kg Moved', 'Max Kg Moved']
+
+    fig = make_subplots(specs=[[{'secondary_y':True}]])
+
+    # Add traces
+    for i,metric in enumerate(metrics):
+        fig.add_trace(
+            go.Line(
+                x=data['date'], y=data[metric], name=metric
+            ),
+            secondary_y=i==1
+        )
+        
+        fig.update_yaxes(title_text=y_label[i], secondary_y=(i==1))
+
+    fig.update_layout(title_text=ename)
+    fig.update_xaxes(title_text='Date')
+    print(type(fig))
+    return fig
 
 # def 
 
@@ -147,7 +163,7 @@ def index() -> rx.Component:
     #     exercise_list()
 
     # )
-
+    data = strength_figure(get_stats(), ename='benchpress')
     return rx.container(
         rx.center(
             rx.grid(
@@ -163,6 +179,8 @@ def index() -> rx.Component:
                 rx.grid_item(
                     exercise_list(), row_span=1, col_span=1, align_self="center"
                 ),
+
+                
                 # template_columns="repeat(4, 1fr)",
                 # rx.grid_item(
                 #     rx.data_table(
@@ -171,7 +189,13 @@ def index() -> rx.Component:
                 # ),
                 # rx.button(on_click=WState._day_stats),
                 # rx.plotly(WState._day_stats)
-            )
+            ),
+            rx.plotly(data=data,
+                      height='400px',
+                      layout=data.to_dict()['layout']       
+                      
+            ),
+            # rx.Plotly(strength_figure(get_stats(), ename='deadlift')),
         )
     )
 
