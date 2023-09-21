@@ -7,7 +7,7 @@ from collections import defaultdict
 import os
 from sqlmodel import Field, Session, SQLModel, create_engine, select, TIMESTAMP, Column, text
 from typing import Optional, List, Dict
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from sqlalchemy.sql import func
 from sqlalchemy import Column, DateTime
 import pandas as pd
@@ -74,7 +74,8 @@ class WState(rx.State):
     reps: Dict[int, str] = {1: 5, 2: 5, 3: 5}
     weight: Dict[int, float] = {1: 70, 2: 70, 3: 70}
 
-    fig: go.Figure = None
+    is_benchmark: Dict[int, bool] = {1:False, 2:False, 3:False}
+    # fig: go.Figure = None
 
     # Used for selecting dates when returning log
     datepicker: str = None
@@ -90,6 +91,10 @@ class WState(rx.State):
 
     def set_reps(self, selector_id: int, reps: int):
         self.reps[selector_id] = reps
+
+    
+    def computed_current_exercise(self, row_id) -> str:
+        return self.current_exercise[row_id]
 
     # async def set_rest(self, selector_id: int):
     #     self.rest[selector_id] = 10
@@ -176,14 +181,96 @@ class WState(rx.State):
                 )
             
             return logged_exercises[::-1]
+    
+    # We put this here as a computed var as we want it to re-compute any time the
+    # state var (current_exercise) values change.
+    # Also we need to operate on the current_exercise var which can't be done outside state easily
+    @rx.var
+    def last_logged_exercise_max(self) -> List[LoggedExercise]:
+        last_logged_exercises = []
+        with rx.session() as session:
+            for selector_id, ename in self.current_exercise.items():
+                statement = (
+                    select(LoggedExercise)
+                    .where(LoggedExercise.ename == ename)
+                    .where(LoggedExercise.created_datetime != WState.today_date())
+                )
+                results = session.exec(statement).all()
+                
+                # Need this or else error when no past results (list empty)
+                if len(results) == 0:
+                    continue
+                date = results[-1].created_datetime
 
+                results = [r for r in results if r.created_datetime == date]
+                results = sorted(results, key= lambda ex: ex.weight, reverse=True)
+                last_logged_exercises.append(results[0])
+
+        return last_logged_exercises
+    
+    
+    ## TODO: Charting the trajectory of progressin with 3-5 % increase per week
+    # Again, needs to be in state to access current_exercise
+    @rx.var
+    def projected_progression_figure(self) -> go.Figure:
+        df = self._log_as_dataframe(model=LoggedExercise)
+        df = df[df.ename=='deadlift']
+        df = df.groupby('date', as_index=False).aggregate(max_kg=('kg','max'))
+        # print(df)
+        proj = self._log_as_dataframe(model=LoggedExercise)
+        proj['date'] = proj.date.apply(lambda x: datetime.strptime(x, "%d-%m-%y"))
+        
+        # pick a dummy benchmark
+        proj = proj[proj.ename=='deadlift'].iloc[0,:]
+        print(type(proj.date))
+        future_dates = [proj.date + timedelta(weeks=x) for x in range(8)]
+        print(future_dates)
+        future_kg_min = [proj.kg + i*.03*proj.kg for i in range(len(future_dates))]
+        future_kg_max = [proj.kg + i*.05*proj.kg for i in range(len(future_dates))]
+        
+        proj = pd.DataFrame({'date':future_dates, 'kg_min':future_kg_min})
+        print(proj)
+
+        # print(df)
+        try:
+            fig = go.Figure()
+            fig.add_trace(
+                go.Line(x=df['date'], y=df['max_kg'])
+            )
+            fig.add_trace(
+
+                go.Line(x=proj['date'], y=proj['kg_min'])
+            )
+        except Exception as e:
+            print(e)
+        return fig
+    
+    @rx.var
+    def projected_layout(self) -> Dict:
+        return self.projected_progression_figure.to_dict()['layout']
+
+    ## TODO: Alternative method of the above justing using pandas. 
+    # Whats better? Incomplete
+
+    # @rx.var
+    # def last_logged_exercise_max_df(self) -> pd.DataFrame:
+    #     df = self._log_as_dataframe()
+    #     df = df[df.ename.isin(self.current_exercise.values())]
+    #     df = df[(df.date == df.date.max()) & (df.date != self.today_date())]
+    #     df = df.groupby('ename').aggregate(
+    #         max_kg=('kg','max'),   
+    #     )
+    #     print(df)
+    #     return df        
+
+        # return last_logged_exercises
 
     ##### -- Visualisation 
     @rx.var
-    def log_as_dataframe(self) -> pd.DataFrame:
+    def log_as_dataframe(self, model=LoggedExercise) -> pd.DataFrame:
         return self._log_as_dataframe()
 
-    def _log_as_dataframe(self) -> pd.DataFrame:
+    def _log_as_dataframe(self, model=LoggedExercise) -> pd.DataFrame:
         
         with rx.session() as session:
             ex_list = session.query(LoggedExercise).all()
@@ -193,29 +280,13 @@ class WState(rx.State):
         data_columns = ["date", "ename", "enum", "reps", "kg"]
         data_types = {'ename':str, 'enum': int, 'reps': int, 'kg': float}
 
-        return pd.DataFrame(
+        df = pd.DataFrame(
             ex_list,
             columns=data_columns
         ).astype(data_types)
-    
-    # @rx.var
-    # def _day_stats(self) -> go.Figure:
-    #     df = self._log_as_dataframe()
+        
+        return df
 
-    #     df['date'] = df.date.apply(lambda x: datetime.datetime.strptime(x, "%d-%m-%y"))
-    #     df = df[df.ename == self.visualise_ename]
-    #     df['load'] = df.reps * df.kg
-
-    #     grpby = df.groupby('date').aggregate(
-    #         vol=("reps", np.sum),
-    #         intensity=("kg", np.max),
-    #         load=("load",np.sum)
-    #     )
-
-    #     fig = go.Figure( data = [
-    #         go.Line(name="Weight", x=grpby.index, y=df['vol'])]
-    #     )
-    #     return fig
         
 
 

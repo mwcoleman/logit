@@ -1,4 +1,5 @@
 import reflex as rx
+from sqlmodel import select
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -10,7 +11,16 @@ import os, datetime
 from logit.weightsapp import WState
 from logit.weightsapp import LoggedExercise
 
-def get_exercise_details(ex):
+def get_exercise_details(ex, with_delete=True):
+    
+    if with_delete:
+        delete_button = rx.button(
+                        "X",
+                        on_click=lambda: WState.delete_logged_exercise(ex.id)
+                        )
+    else:
+        delete_button = rx.text("")
+
     return rx.tr(
         # rx.td(ex.id),
         # rx.td(ex.idx),
@@ -19,18 +29,13 @@ def get_exercise_details(ex):
         rx.td(ex.enum),
         rx.td(ex.reps),
         rx.td(ex.weight),
-        rx.td(
-            rx.button(
-                "X",
-                on_click=lambda: WState.delete_logged_exercise(ex.id)
-            )
-        )
+        rx.td(delete_button)
     )
 
-def exercise_list() -> rx.Component:
+def exercise_list(body_elements, heading="") -> rx.Component:
 
     return rx.vstack(
-        rx.heading(("")),
+        rx.heading((heading)),
         rx.table_container(
             rx.table(
                 rx.thead(
@@ -45,11 +50,7 @@ def exercise_list() -> rx.Component:
                     )
                 ),
                 rx.tbody(
-                    rx.foreach(
-                        # WState.logged_exercises,
-                        WState.iterate_logged_exercises,
-                        lambda ex: get_exercise_details(ex)
-                    )
+                    body_elements
                 )
             )   
         )
@@ -71,7 +72,9 @@ def new_exercise_selector(row_id: int) -> rx.Component:
         rx.number_input(
             default_value=70,
             on_change=lambda weight: WState.set_weight(row_id, weight)),
-        
+
+        rx.checkbox("Bechmark", size="sm", on_change=lambda c: WState.set_is_benchmark(row_id, c)),
+
         rx.button(
             "+",
             on_click=lambda: WState.add_logged_exercise(row_id)
@@ -81,7 +84,9 @@ def new_exercise_selector(row_id: int) -> rx.Component:
         
         )
 
-def get_stats() -> pd.DataFrame:
+#####
+# TODO: These can be moved to a processing script
+def log_as_df() -> pd.DataFrame:
     with rx.session() as session:
         ex_list = session.query(LoggedExercise).all()
 
@@ -95,6 +100,14 @@ def get_stats() -> pd.DataFrame:
         columns=data_columns
     ).astype(data_types)
 
+    return df
+
+def get_stats() -> pd.DataFrame:
+    # This needs to/should be(?) be done outside of state otherwise 
+    # we can't use it to generate the figure (with current knowledge..)
+
+    df = log_as_df()
+
     df['date'] = df.date.apply(lambda x: datetime.datetime.strptime(x, "%d-%m-%y"))
     df['load'] = df.reps * df.kg
 
@@ -106,10 +119,18 @@ def get_stats() -> pd.DataFrame:
 
     return grpby
 
+
+
+
+
+
+
+######
+
+
 def strength_figure(df: pd.DataFrame, ename: str) -> go.Figure:
     # df.columns= ['date', 'ename', 'vol', 'intensity', 'load']
     metrics = ['load', 'intensity']
-    print(df)
 
     data = df[df.ename==ename]
     # fig = px.line(data, x='date', y='intensity', title='intensity')
@@ -129,19 +150,9 @@ def strength_figure(df: pd.DataFrame, ename: str) -> go.Figure:
         
         fig.update_yaxes(title_text=y_label[i], secondary_y=(i==1))
 
-    fig.update_layout(title_text=ename)
+    # fig.update_layout(title_text=ename)
     fig.update_xaxes(title_text='Date')
-    print(type(fig))
     return fig
-
-# def 
-
-
-# def day_trend_plot():
-#     df = WState._log_as_dataframe()
-#     fig = px.line(df.groupby("date").sum(), x='date', y='weight')
-#     return rx.Plotly(data=fig, height="400px")
-#     return rx.Plotly(data=figure, height=height)
 
 ## TODO: Figure this out.. to have a button increment the number of pickers on screen
 # def exercise_selectors() -> rx.Component:
@@ -156,6 +167,30 @@ def strength_figure(df: pd.DataFrame, ename: str) -> go.Figure:
 #     return selectors
 
 
+        
+
+    # Show last session details
+
+
+    # Show Projection Figure from last benchmark/1rm
+
+
+def last_exercise_dashboard() -> rx.Component:
+    ex_list = WState.last_logged_exercise_max
+
+    table = exercise_list(
+        body_elements=
+            rx.foreach(
+                ex_list,
+                lambda ex: get_exercise_details(ex, with_delete=False)
+            ),
+            heading="Last Max"
+    )
+
+
+    
+    return table
+
 def index() -> rx.Component:
     # return rx.container(
     #     new_exercise_selector(),
@@ -167,34 +202,40 @@ def index() -> rx.Component:
     return rx.container(
         rx.center(
             rx.grid(
-                # *exercise_selectors(),
 
                 rx.grid_item(
                     new_exercise_selector(row_id=1), row_span=1, col_span=1, align_self="center"
                 ),
+
                 rx.grid_item(
                     new_exercise_selector(row_id=2), row_span=1, col_span=1, align_self="center"
                 ),
 
                 rx.grid_item(
-                    exercise_list(), row_span=1, col_span=1, align_self="center"
+                    last_exercise_dashboard()
                 ),
 
-                
-                # template_columns="repeat(4, 1fr)",
-                # rx.grid_item(
-                #     rx.data_table(
-                #         data=WState.log_as_dataframe
-                #     )
-                # ),
-                # rx.button(on_click=WState._day_stats),
-                # rx.plotly(WState._day_stats)
+                rx.grid_item(
+                    exercise_list(
+                        body_elements=rx.foreach(
+                            WState.iterate_logged_exercises,
+                            lambda ex: get_exercise_details(ex)
+                        ),
+                        heading="Log",
+                    ), 
+                    row_span=1, 
+                    col_span=1, 
+                    align_self="center"
+                ),
+
             ),
             rx.plotly(data=data,
                       height='400px',
                       layout=data.to_dict()['layout']       
                       
             ),
+            rx.plotly(data=WState.projected_progression_figure,
+                      height="400px")#, layout=WState.projected_layout)
             # rx.Plotly(strength_figure(get_stats(), ename='deadlift')),
         )
     )
