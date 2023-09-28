@@ -13,6 +13,12 @@ from sqlalchemy import Column, DateTime
 import pandas as pd
 import numpy as np
 
+try:
+    from logit.data_analysis import progression_figure, load_intensity_figure
+except:
+    # For notebook debug
+    from data_analysis import progression_figure, load_intensity_figure
+
 # from datetime import date, datetime
 class LoggedExercise(rx.Model, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -156,6 +162,29 @@ class WState(rx.State):
         # self.countdown(selector_id)
         # self.total_set_number += 1
     
+    def _log_as_dataframe(self, model=LoggedExercise) -> pd.DataFrame:
+        
+        with rx.session() as session:
+            ex_list = session.query(LoggedExercise).all()
+
+        ex_list = [ex._li() for ex in ex_list]  
+
+        data_columns = ["date", "ename", "enum", "reps", "kg"]
+        data_types = {'ename':str, 'enum': int, 'reps': int, 'kg': float}
+
+        df = pd.DataFrame(
+            ex_list,
+            columns=data_columns
+        ).astype(data_types)
+        
+        return df
+    
+    ### COMPUTED VARIABLES
+
+    @rx.var
+    def log_as_dataframe(self, model=LoggedExercise) -> pd.DataFrame:
+        return self._log_as_dataframe()
+    
     @rx.var
     def iterate_logged_exercises(self) -> List[LoggedExercise]:
         # Computed var processed each time 
@@ -190,6 +219,8 @@ class WState(rx.State):
         last_logged_exercises = []
         with rx.session() as session:
             for selector_id, ename in self.current_exercise.items():
+                if selector_id > 2:
+                    break
                 statement = (
                     select(LoggedExercise)
                     .where(LoggedExercise.ename == ename)
@@ -208,84 +239,27 @@ class WState(rx.State):
 
         return last_logged_exercises
     
-    
-    ## TODO: Charting the trajectory of progressin with 3-5 % increase per week
-    # Again, needs to be in state to access current_exercise
+    # @rx.var
+    # def _figure_load_intensity(self) -> go.Figure:
+    #     print("HI")
+    #     return load_intensity_figure(self._log_as_dataframe())
+
+    ## TODO: Needs to be in state to access current_exercise
     @rx.var
     def projected_progression_figure(self) -> go.Figure:
+
         df = self._log_as_dataframe(model=LoggedExercise)
-        df = df[df.ename=='deadlift']
-        df = df.groupby('date', as_index=False).aggregate(max_kg=('kg','max'))
-        # print(df)
         proj = self._log_as_dataframe(model=LoggedExercise)
-        proj['date'] = proj.date.apply(lambda x: datetime.strptime(x, "%d-%m-%y"))
+        return progression_figure('deadlift', df, proj)
         
-        # pick a dummy benchmark
-        proj = proj[proj.ename=='deadlift'].iloc[0,:]
-        print(type(proj.date))
-        future_dates = [proj.date + timedelta(weeks=x) for x in range(8)]
-        print(future_dates)
-        future_kg_min = [proj.kg + i*.03*proj.kg for i in range(len(future_dates))]
-        future_kg_max = [proj.kg + i*.05*proj.kg for i in range(len(future_dates))]
-        
-        proj = pd.DataFrame({'date':future_dates, 'kg_min':future_kg_min})
-        print(proj)
-
-        # print(df)
-        try:
-            fig = go.Figure()
-            fig.add_trace(
-                go.Line(x=df['date'], y=df['max_kg'])
-            )
-            fig.add_trace(
-
-                go.Line(x=proj['date'], y=proj['kg_min'])
-            )
-        except Exception as e:
-            print(e)
-        return fig
-    
+    # Need to store layout in seperate computed var,
+    # can't access it in front end
     @rx.var
     def projected_layout(self) -> Dict:
         return self.projected_progression_figure.to_dict()['layout']
 
-    ## TODO: Alternative method of the above justing using pandas. 
-    # Whats better? Incomplete
 
-    # @rx.var
-    # def last_logged_exercise_max_df(self) -> pd.DataFrame:
-    #     df = self._log_as_dataframe()
-    #     df = df[df.ename.isin(self.current_exercise.values())]
-    #     df = df[(df.date == df.date.max()) & (df.date != self.today_date())]
-    #     df = df.groupby('ename').aggregate(
-    #         max_kg=('kg','max'),   
-    #     )
-    #     print(df)
-    #     return df        
 
-        # return last_logged_exercises
-
-    ##### -- Visualisation 
-    @rx.var
-    def log_as_dataframe(self, model=LoggedExercise) -> pd.DataFrame:
-        return self._log_as_dataframe()
-
-    def _log_as_dataframe(self, model=LoggedExercise) -> pd.DataFrame:
-        
-        with rx.session() as session:
-            ex_list = session.query(LoggedExercise).all()
-
-        ex_list = [ex._li() for ex in ex_list]  
-
-        data_columns = ["date", "ename", "enum", "reps", "kg"]
-        data_types = {'ename':str, 'enum': int, 'reps': int, 'kg': float}
-
-        df = pd.DataFrame(
-            ex_list,
-            columns=data_columns
-        ).astype(data_types)
-        
-        return df
 
         
 

@@ -8,8 +8,12 @@ import numpy as np
 import pandas as pd
 import os, datetime
 
-from logit.weightsapp import WState
-from logit.weightsapp import LoggedExercise
+try:
+    from logit.weightsapp import WState
+    from logit.weightsapp import LoggedExercise
+    from logit.data_analysis import load_intensity_figure
+except:
+    from weightsapp import WState, LoggedExercise # for notebook debug
 
 def get_exercise_details(ex, with_delete=True):
     
@@ -142,8 +146,8 @@ def strength_figure(df: pd.DataFrame, ename: str) -> go.Figure:
     # Add traces
     for i,metric in enumerate(metrics):
         fig.add_trace(
-            go.Line(
-                x=data['date'], y=data[metric], name=metric
+            go.Scatter(
+                x=data['date'].values, y=data[metric], name=metric, #mode='lines'
             ),
             secondary_y=i==1
         )
@@ -191,6 +195,20 @@ def last_exercise_dashboard() -> rx.Component:
     
     return table
 
+
+def analysis() -> rx.Component:
+    '''Here goes visualisations etc for logbook'''
+    figure_load_intensity = load_intensity_figure('deadlift', log_as_df())
+    layout_load_intensity = figure_load_intensity.to_dict()['layout']
+    
+    return rx.plotly(
+                        data=figure_load_intensity,
+                        height='400px',
+                        layout=layout_load_intensity      
+                    )
+    
+
+
 def index() -> rx.Component:
     # return rx.container(
     #     new_exercise_selector(),
@@ -214,7 +232,30 @@ def index() -> rx.Component:
                 rx.grid_item(
                     last_exercise_dashboard()
                 ),
-
+                
+                rx.grid_item(
+                    rx.plotly(
+                        data=load_intensity_figure('deadlift', log_as_df()),
+                        height='400px',
+                        layout=data.to_dict()['layout']       
+                    ),
+                    row_span=1, col_span=1, align_self='center'
+                ),
+                rx.grid_item(
+                    rx.plotly(
+                        data=data,
+                        height='400px',
+                        layout=data.to_dict()['layout']       
+                    ),
+                    row_span=1, col_span=1, align_self='center'
+                ),
+                rx.grid_item(
+                    rx.plotly(
+                        data=WState.projected_progression_figure,
+                        height="400px"
+                        ),
+                    row_span=1, col_span=1, align_self='center'
+                ),
                 rx.grid_item(
                     exercise_list(
                         body_elements=rx.foreach(
@@ -229,14 +270,7 @@ def index() -> rx.Component:
                 ),
 
             ),
-            rx.plotly(data=data,
-                      height='400px',
-                      layout=data.to_dict()['layout']       
-                      
-            ),
-            rx.plotly(data=WState.projected_progression_figure,
-                      height="400px")#, layout=WState.projected_layout)
-            # rx.Plotly(strength_figure(get_stats(), ename='deadlift')),
+
         )
     )
 
