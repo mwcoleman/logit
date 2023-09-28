@@ -70,9 +70,9 @@ def load_intensity_figure(ename: str, df: pd.DataFrame) -> go.Figure:
     return fig
 
 def progression_figure(
-        ename: str, 
-        df: pd.DataFrame,
-        proj: pd.DataFrame,
+        enames: List[str], 
+        exercise_df: pd.DataFrame,
+        benchmark_df: pd.DataFrame,
         progression_rate: tuple = (2.5,5)) -> go.Figure:
     '''
     df: dataframe extract of LoggedExercise table (all)
@@ -80,65 +80,71 @@ def progression_figure(
     ename: string of exercise to display
     progression_rate: % band to project from previous benchmark result
     '''
+    fig = go.Figure()
 
     try:
-        df['date'] = df.date.apply(lambda x: datetime.strptime(x,  "%d-%m-%y"))
-        proj['date'] = proj.date.apply(lambda x: datetime.strptime(x, "%d-%m-%y"))
-    except:
-        pass
-    df = df[df.ename==ename]
-    # Dummy
-    proj = proj[proj.ename==ename].iloc[0,:]
-    
-    
-    df = df.groupby('date', as_index=False).aggregate(max_kg=('kg','max'))
-
-    future_dates = [proj.date + timedelta(weeks=x) for x in range(8)]
-
-    l, h = (p/100 for p in progression_rate) if any((p > 1 for p in progression_rate)) else progression_rate
-
-    future_kg_min = [proj.kg + (i * l) * proj.kg for i in range(len(future_dates))]
-    future_kg_max = [proj.kg + (i * h) * proj.kg for i in range(len(future_dates))]
-    
-    proj = pd.DataFrame({'date':future_dates, 'kg_min':future_kg_min, 'kg_max':future_kg_max})
-
-    try:
-        fig = go.Figure()
-        fig.add_trace(
-            go.Scatter(
-                name=f'Logged {ename}',
-                x=df['date'].values, 
-                y=df['max_kg'],
-                showlegend=False,
-            )#, mode='lines')
-        )
-        # From https://plotly.com/python/continuous-error-bars/
-        fig.add_trace(
-            go.Scatter(
-                name='lower', 
-                x=proj['date'].values, 
-                y=proj['kg_min'],
-                mode='lines',
-                showlegend=False,
-                marker=dict(color='#444'),
-                line=dict(width=0),
-                hoverinfo='skip'
-            )
-        ),
-        fig.add_trace(
-            go.Scatter(
-                name='upper', 
-                x=proj.date.values, 
-                y=proj['kg_max'], 
-                fill='tonexty', 
-                fillcolor='rgba(68,68,68,0.3)',
-                mode='lines',
-                showlegend=False,
-                marker=dict(color='#444'),
-                line=dict(width=0),
-                hoverinfo='skip'
-                )#,, )
-        )
+        exercise_df['date'] = exercise_df.date.apply(lambda x: datetime.strptime(x,  "%d-%m-%y"))
+        benchmark_df['date'] = benchmark_df.date.apply(lambda x: datetime.strptime(x, "%d-%m-%y"))
     except Exception as e:
-        print(f'Exception during projected figure! {e}')
+        pass
+    
+    for ename in enames: 
+        df = exercise_df[exercise_df.ename==ename]
+        # Dummy
+        proj = benchmark_df[benchmark_df.ename==ename]
+        if len(proj) == 0:
+            return go.Figure()
+        
+        proj = proj.iloc[0,:]
+        
+        df = df.groupby('date', as_index=False).aggregate(max_kg=('kg','max'))
+
+        future_dates = [proj.date + timedelta(weeks=x) for x in range(8)]
+
+        l, h = (p/100 for p in progression_rate) if any((p > 1 for p in progression_rate)) else progression_rate
+
+        future_kg_min = [proj.kg + (i * l) * proj.kg for i in range(len(future_dates))]
+        future_kg_max = [proj.kg + (i * h) * proj.kg for i in range(len(future_dates))]
+        
+        proj = pd.DataFrame({'date':future_dates, 'kg_min':future_kg_min, 'kg_max':future_kg_max})
+
+        try:
+            # fig = go.Figure()
+            fig.add_trace(
+                go.Scatter(
+                    name=f'Logged {ename}',
+                    x=df['date'].values, 
+                    y=df['max_kg'],
+                    showlegend=False,
+                )#, mode='lines')
+            )
+            # From https://plotly.com/python/continuous-error-bars/
+            fig.add_trace(
+                go.Scatter(
+                    name='lower', 
+                    x=proj['date'].values, 
+                    y=proj['kg_min'],
+                    mode='lines',
+                    showlegend=False,
+                    marker=dict(color='#444'),
+                    line=dict(width=0),
+                    hoverinfo='skip'
+                )
+            ),
+            fig.add_trace(
+                go.Scatter(
+                    name='upper', 
+                    x=proj.date.values, 
+                    y=proj['kg_max'], 
+                    fill='tonexty', 
+                    fillcolor='rgba(68,68,68,0.3)',
+                    mode='lines',
+                    showlegend=False,
+                    marker=dict(color='#444'),
+                    line=dict(width=0),
+                    hoverinfo='skip'
+                    )#,, )
+            )
+        except Exception as e:
+            print(f'Exception during projected figure! {e}')
     return fig

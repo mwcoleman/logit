@@ -37,7 +37,9 @@ def get_exercise_details(ex, with_delete=True):
     )
 
 def exercise_list(body_elements, heading="") -> rx.Component:
-
+    print(type(body_elements))
+    if body_elements is None:
+        return rx.text("No data")
     return rx.vstack(
         rx.heading((heading)),
         rx.table_container(
@@ -62,7 +64,11 @@ def exercise_list(body_elements, heading="") -> rx.Component:
 
 def new_exercise_selector(row_id: int) -> rx.Component:
     return rx.hstack(
-        
+        rx.select(
+            WState.date_range,
+            default_value=WState.date_range[0],
+            on_change=lambda d: WState.set_log_date(row_id, d)
+        ),
         rx.select(
             WState.exercise_names,
             default_value=WState.exercise_names[0],
@@ -77,7 +83,7 @@ def new_exercise_selector(row_id: int) -> rx.Component:
             default_value=70,
             on_change=lambda weight: WState.set_weight(row_id, weight)),
 
-        rx.checkbox("Bechmark", size="sm", on_change=lambda c: WState.set_is_benchmark(row_id, c)),
+        rx.checkbox("Benchmark", size="sm", on_change=lambda c: WState.set_is_benchmark(row_id, c)),
 
         rx.button(
             "+",
@@ -158,25 +164,7 @@ def strength_figure(df: pd.DataFrame, ename: str) -> go.Figure:
     fig.update_xaxes(title_text='Date')
     return fig
 
-## TODO: Figure this out.. to have a button increment the number of pickers on screen
-# def exercise_selectors() -> rx.Component:
-    
-#     selectors = rx.foreach(
-#         WState.get_selector_count_range,
-#         lambda i: rx.grid_item(
-#                     new_exercise_selector(row_id=i), row_span=1, col_span=1, align_self="center"
-#         )
-#     )
 
-#     return selectors
-
-
-        
-
-    # Show last session details
-
-
-    # Show Projection Figure from last benchmark/1rm
 
 
 def last_exercise_dashboard() -> rx.Component:
@@ -229,33 +217,38 @@ def index() -> rx.Component:
                     new_exercise_selector(row_id=2), row_span=1, col_span=1, align_self="center"
                 ),
 
-                rx.grid_item(
-                    last_exercise_dashboard()
-                ),
+                # rx.grid_item(
+                #     last_exercise_dashboard()
+                # ),
+               ## TODO: Either of these work, but neither able to choose based on current_exercise. 
+                # rx.grid_item(
+                #     rx.plotly(
+                #         data=load_intensity_figure('deadlift', log_as_df()),
+                #         height='400px',
+                #         layout=data.to_dict()['layout']       
+                #     ),
+                #     row_span=1, col_span=1, align_self='center'
+                # ),
+                # rx.grid_item(
+                #     rx.plotly(
+                #         data=data,
+                #         height='400px',
+                #         layout=data.to_dict()['layout']       
+                #     ),
+                #     row_span=1, col_span=1, align_self='center'
+                # ),
+
+                # Show a typical 8 week progression in +kg
                 
                 rx.grid_item(
-                    rx.plotly(
-                        data=load_intensity_figure('deadlift', log_as_df()),
-                        height='400px',
-                        layout=data.to_dict()['layout']       
-                    ),
-                    row_span=1, col_span=1, align_self='center'
-                ),
-                rx.grid_item(
-                    rx.plotly(
-                        data=data,
-                        height='400px',
-                        layout=data.to_dict()['layout']       
-                    ),
-                    row_span=1, col_span=1, align_self='center'
-                ),
-                rx.grid_item(
+
                     rx.plotly(
                         data=WState.projected_progression_figure,
                         height="400px"
                         ),
                     row_span=1, col_span=1, align_self='center'
                 ),
+
                 rx.grid_item(
                     exercise_list(
                         body_elements=rx.foreach(
@@ -268,6 +261,18 @@ def index() -> rx.Component:
                     col_span=1, 
                     align_self="center"
                 ),
+                # rx.grid_item(
+                #     exercise_list(
+                #         body_elements=rx.foreach(
+                #             WState.iterate_logged_benchmarks,
+                #             lambda ex: get_exercise_details(ex)
+                #         ),
+                #         heading="Benchmark Log",
+                #     ), 
+                #     row_span=1, 
+                #     col_span=1, 
+                #     align_self="center"
+                # ),
 
             ),
 

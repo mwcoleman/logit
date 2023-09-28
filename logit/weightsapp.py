@@ -52,6 +52,38 @@ class LoggedExercise(rx.Model, table=True):
     def __getitem__(self, item):
         return self._li[item]
 
+class LoggedBenchmark(rx.Model, table=True):
+    """
+    Table model for storing benchmarked strength exercises. Mimics LoggedExercise, but not subclassed.
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    # TODO: This was going to be server-created but too many issues with sqlite..
+    created_datetime: str
+    ename: str
+    enum: int 
+    reps: int # 1RM, 2RM etc. 
+    weight: float 
+
+    def __init__(self, created_datetime, ename, enum, reps, weight):
+        self.created_datetime: str = created_datetime
+        self.ename: str = ename
+        self.enum: int = enum
+        self.reps: int = reps
+        self.weight: float = weight
+
+    def _li(self) -> List:
+        return [self.created_datetime, self.ename, self.enum, self.reps, self.weight]
+    
+    def __repr__(self) -> str:
+        return f'{self.ename},{self.enum},{self.reps},{self.weight}'
+    
+    def __iter__(self):
+        return self._li
+
+    def __getitem__(self, item):
+        return self._li[item]
+
+
 class WState(rx.State):
     
 
@@ -71,19 +103,25 @@ class WState(rx.State):
         "HB: MR 20mm"
     ]
 
+    date_range: List[str] = [(date.today() - timedelta(days=x))
+                              .strftime("%d-%m-%y")
+                              for x in range(365)]
+
 
     # total_set_number: int = 1
     # exercise_counter: dict = {ename:0 for ename in exercise_names}
     
     # Each key represents a different exercise_selector state var
-    current_exercise: Dict[int, str] = {1: exercise_names[0], 2: exercise_names[0], 3: exercise_names[0]}
+    current_exercise: Dict[int, str] = {1: exercise_names[0], 2: exercise_names[1], 3: exercise_names[1]}
     reps: Dict[int, str] = {1: 5, 2: 5, 3: 5}
     weight: Dict[int, float] = {1: 70, 2: 70, 3: 70}
+    log_date: Dict[int, str] = {1: date.today().strftime("%d-%m-%y"),
+                                2: date.today().strftime("%d-%m-%y"),
+                                3: date.today().strftime("%d-%m-%y")}
 
     is_benchmark: Dict[int, bool] = {1:False, 2:False, 3:False}
-    # fig: go.Figure = None
 
-    # Used for selecting dates when returning log
+    # TODO: future- Used for selecting dates when returning log
     datepicker: str = None
 
     visualise_ename: str = "Scan"
@@ -98,12 +136,14 @@ class WState(rx.State):
     def set_reps(self, selector_id: int, reps: int):
         self.reps[selector_id] = reps
 
-    
-    def computed_current_exercise(self, row_id) -> str:
-        return self.current_exercise[row_id]
+    def set_log_date(self, selector_id: int, datestr: str):
+        self.log_date[selector_id] = datestr
+
+    def set_is_benchmark(self, selector_id, flag):
+        self.is_benchmark[selector_id] = flag
 
     # async def set_rest(self, selector_id: int):
-    #     self.rest[selector_id] = 10
+        #     self.rest[selector_id] = 10
     #     await self.tick(selector_id)
 
 
@@ -113,54 +153,35 @@ class WState(rx.State):
             result = session.exec(statement).first()
             session.delete(result)
             session.commit()
-
-
-        # # Adjust other exercise idx
-        # for ex in self.logged_exercises[idx:]:
-        #     ex.idx -= 1
-        # # Adjust current total sets
-        # self.total_set_number -= 1
-
-        # del self.logged_exercises[idx - 1] 
     
     @staticmethod
     def today_date() -> str:
         return date.today().strftime("%d-%m-%y") 
 
     def add_logged_exercise(self, selector_id: int):
-        # TODO: Not necessary once date/name db filtering implemented
-        # self.exercise_counter[self.current_exercise[selector_id]] += 1
-        
-        # for k,v in self.exercise_counter.items():
-        #     if k=="Scan" or k=="deadlift":
-        #         print(f"{k} : {v}")
-        
-        # Add to database
+
         with rx.session() as session:
-            
+            model = LoggedBenchmark if self.is_benchmark[selector_id] else LoggedExercise
+
             matching_exercises = (
-                session.query(LoggedExercise)
-                .filter(LoggedExercise.ename.contains(self.current_exercise[selector_id]))
-                .filter(LoggedExercise.created_datetime.contains(self.today_date()))
+                session.query(model)
+                .filter(model.ename.contains(self.current_exercise[selector_id]))
+                .filter(model.created_datetime.contains(self.today_date()))
                 .all()
             )
                 
             
             session.add(
-                LoggedExercise(
-                # self.total_set_number,
-                # date.today().strftime("%d-%m-%y"),
-                    created_datetime=self.today_date(),
+                model(
+                    created_datetime=self.log_date[selector_id],
                     ename=self.current_exercise[selector_id],
-                    enum=len(matching_exercises),#self.exercise_counter[self.current_exercise[selector_id]],
+                    enum=len(matching_exercises),
                     reps=self.reps[selector_id],
                     weight=self.weight[selector_id]#
                 )
             )
             session.commit()
-            # print(new_exercise.id)
-        # self.countdown(selector_id)
-        # self.total_set_number += 1
+
     
     def _log_as_dataframe(self, model=LoggedExercise) -> pd.DataFrame:
         
@@ -181,6 +202,27 @@ class WState(rx.State):
     
     ### COMPUTED VARIABLES
 
+    # @rx.var
+    # def current_exercise_has_been_logged(self) -> Dict[int, bool]:
+    #     """
+    #     Holds flags for if each of the current exercises has ben recorded as an exercise and benchmark
+    #     """
+    #     e_df = self._log_as_dataframe()
+        
+    #     return {selector_id: len(e_df[e_df.ename==ename]) > 0
+    #             for selector_id, ename in self.current_exercise.items()}
+    
+    # @rx.var
+    # def current_exercise_has_been_benchmarked(self) -> Dict[int, bool]:
+    #     """
+    #     Holds flags for if each of the current exercises has ben recorded as an exercise and benchmark
+    #     """
+    #     e_df = self._log_as_dataframe(model=LoggedBenchmark)
+        
+    #     return {selector_id: len(e_df[e_df.ename==ename]) > 0
+    #             for selector_id, ename in self.current_exercise.items()}
+
+
     @rx.var
     def log_as_dataframe(self, model=LoggedExercise) -> pd.DataFrame:
         return self._log_as_dataframe()
@@ -190,27 +232,58 @@ class WState(rx.State):
         # Computed var processed each time 
         with rx.session() as session:
             
-            ## Possible to do it using sqlmodel methods:
-            # statement = select(LoggedExercise)
-            # results = session.exec(statement)
-            # print(results)
-            # for r in results:
-            #     print(r)
+            # Can also select using sqlmethod approach
+            # for now we follow reflex method as per https://reflex.dev/docs/database/queries/
+            try:
+                if self.datepicker is None:
+                    logged_exercises = session.query(LoggedExercise).all()
 
-            ## But for now we follow reflex method as per https://reflex.dev/docs/database/queries/
-            
-            if self.datepicker is None:
-                logged_exercises = session.query(LoggedExercise).all()
+                else:
+                    logged_exercises = (
+                        session.query(LoggedExercise)
+                        .filter(LoggedExercise.created_datetime.contains(self.datepicker))
+                        .all()
+                    )
+            except:
+                return []
 
-            else:
-                logged_exercises = (
-                    session.query(LoggedExercise)
-                    .filter(LoggedExercise.created_datetime.contains(self.datepicker))
-                    .all()
-                )
-            
-            return logged_exercises[::-1]
+            logged_exercises = sorted(
+                logged_exercises, 
+                key= lambda ex: datetime.strptime(ex.created_datetime, "%d-%m-%y"),
+                reverse=True,
+            )
+
+
+            return logged_exercises
     
+    @rx.var
+    def iterate_logged_benchmarks(self) -> List[LoggedBenchmark]:
+        """
+        Return a list of all logged benchmark exercises 
+        """
+        # Computed var processed each time 
+        with rx.session() as session:
+            try:
+                if self.datepicker is None:
+                    
+                    logged_exercises = session.query(LoggedBenchmark).all()
+
+                else:
+                    logged_exercises = (
+                        session.query(LoggedBenchmark)
+                        .filter(LoggedBenchmark.created_datetime.contains(self.datepicker))
+                        .all()
+                        )
+            except Exception as e:
+                print(e)
+                return []
+
+            return sorted(
+                logged_exercises, 
+                key= lambda ex: datetime.strptime(ex.created_datetime, "%d-%m-%y"),
+                reverse=True,
+            )
+        
     # We put this here as a computed var as we want it to re-compute any time the
     # state var (current_exercise) values change.
     # Also we need to operate on the current_exercise var which can't be done outside state easily
@@ -246,11 +319,16 @@ class WState(rx.State):
 
     ## TODO: Needs to be in state to access current_exercise
     @rx.var
-    def projected_progression_figure(self) -> go.Figure:
-
+    def projected_progression_figure(self) -> go.Figure:# Dict[int, go.Figure]:
+        """
+        Generate a typical progression from last benchmark for selected exercises
+        """
         df = self._log_as_dataframe(model=LoggedExercise)
         proj = self._log_as_dataframe(model=LoggedExercise)
-        return progression_figure('deadlift', df, proj)
+        
+        return progression_figure(self.current_exercise.values(), df, proj)
+       
+    
         
     # Need to store layout in seperate computed var,
     # can't access it in front end
