@@ -147,9 +147,12 @@ class WState(rx.State):
     #     await self.tick(selector_id)
 
 
-    def delete_logged_exercise(self, id:int):
+    def delete_logged_exercise(self, id:int, benchmarks: bool):
+        
+        model = LoggedBenchmark if benchmarks else LoggedExercise
+        
         with rx.session() as session:
-            statement = select(LoggedExercise).where(LoggedExercise.id == id)
+            statement = select(model).where(model.id == id)
             result = session.exec(statement).first()
             session.delete(result)
             session.commit()

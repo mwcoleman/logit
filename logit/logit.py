@@ -15,12 +15,12 @@ try:
 except:
     from weightsapp import WState, LoggedExercise # for notebook debug
 
-def get_exercise_details(ex, with_delete=True):
+def get_exercise_details(ex, with_delete=True, benchmarks=False):
     
     if with_delete:
         delete_button = rx.button(
                         "X",
-                        on_click=lambda: WState.delete_logged_exercise(ex.id)
+                        on_click=lambda: WState.delete_logged_exercise(ex.id, benchmarks)
                         )
     else:
         delete_button = rx.text("")
@@ -261,18 +261,18 @@ def index() -> rx.Component:
                     col_span=1, 
                     align_self="center"
                 ),
-                # rx.grid_item(
-                #     exercise_list(
-                #         body_elements=rx.foreach(
-                #             WState.iterate_logged_benchmarks,
-                #             lambda ex: get_exercise_details(ex)
-                #         ),
-                #         heading="Benchmark Log",
-                #     ), 
-                #     row_span=1, 
-                #     col_span=1, 
-                #     align_self="center"
-                # ),
+                rx.grid_item(
+                    exercise_list(
+                        body_elements=rx.foreach(
+                            WState.iterate_logged_benchmarks,
+                            lambda ex: get_exercise_details(ex, benchmarks=True)
+                        ),
+                        heading="Benchmark Log",
+                    ), 
+                    row_span=1, 
+                    col_span=1, 
+                    align_self="center"
+                ),
 
             ),
 
