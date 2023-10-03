@@ -29,19 +29,21 @@ class LoggedExercise(rx.Model, table=True):
     enum: int
     reps: int 
     weight: float 
+    rpe: int
     # _li: list
 
-    def __init__(self, created_datetime, ename, enum, reps, weight):
+    def __init__(self, created_datetime, ename, enum, reps, weight, rpe):
         # self.idx: int = idx
         self.created_datetime: str = created_datetime
         self.ename: str = ename
         self.enum: int = enum
         self.reps: int = reps
         self.weight: float = weight
+        self.rpe: int = rpe
         # self._li = [created_datetime, ename, enum, reps, weight]
 
     def _li(self) -> List:
-        return [self.created_datetime, self.ename, self.enum, self.reps, self.weight]
+        return [self.created_datetime, self.ename, self.enum, self.reps, self.weight, self.rpe]
     
     def __repr__(self) -> str:
         return f'{self.ename},{self.enum},{self.reps},{self.weight}'
@@ -63,16 +65,18 @@ class LoggedBenchmark(rx.Model, table=True):
     enum: int 
     reps: int # 1RM, 2RM etc. 
     weight: float 
+    rpe: int # doesn't quite make sense, probably always 10. but keeps front end easy.
 
-    def __init__(self, created_datetime, ename, enum, reps, weight):
+    def __init__(self, created_datetime, ename, enum, reps, weight, rpe):
         self.created_datetime: str = created_datetime
         self.ename: str = ename
         self.enum: int = enum
         self.reps: int = reps
         self.weight: float = weight
+        self.rpe: int = rpe
 
     def _li(self) -> List:
-        return [self.created_datetime, self.ename, self.enum, self.reps, self.weight]
+        return [self.created_datetime, self.ename, self.enum, self.reps, self.weight, self.rpe]
     
     def __repr__(self) -> str:
         return f'{self.ename},{self.enum},{self.reps},{self.weight}'
@@ -115,6 +119,8 @@ class WState(rx.State):
     current_exercise: Dict[int, str] = {1: exercise_names[0], 2: exercise_names[1], 3: exercise_names[1]}
     reps: Dict[int, str] = {1: 5, 2: 5, 3: 5}
     weight: Dict[int, float] = {1: 70, 2: 70, 3: 70}
+    rpe: Dict[int, int] = {1:8, 2:8, 3:8}
+
     log_date: Dict[int, str] = {1: date.today().strftime("%d-%m-%y"),
                                 2: date.today().strftime("%d-%m-%y"),
                                 3: date.today().strftime("%d-%m-%y")}
@@ -129,6 +135,9 @@ class WState(rx.State):
     # Overload the set_... methods to specify the row_id of the selector
     def set_current_exercise(self, selector_id: int, exercise: str):
         self.current_exercise[selector_id] = exercise
+
+    def set_rpe(self, selector_id: int, rpe: int):
+        self.rpe[selector_id] = rpe
 
     def set_weight(self, selector_id: int, weight: float):
         self.weight[selector_id] = weight
@@ -180,7 +189,8 @@ class WState(rx.State):
                     ename=self.current_exercise[selector_id],
                     enum=len(matching_exercises),
                     reps=self.reps[selector_id],
-                    weight=self.weight[selector_id]#
+                    weight=self.weight[selector_id],
+                    rpe=self.rpe[selector_id]
                 )
             )
             session.commit()
@@ -193,8 +203,8 @@ class WState(rx.State):
 
         ex_list = [ex._li() for ex in ex_list]  
 
-        data_columns = ["date", "ename", "enum", "reps", "kg"]
-        data_types = {'ename':str, 'enum': int, 'reps': int, 'kg': float}
+        data_columns = ["date", "ename", "enum", "reps", "kg", "rpe"]
+        data_types = {'ename':str, 'enum': int, 'reps': int, 'kg': float, 'rpe': int}
 
         df = pd.DataFrame(
             ex_list,

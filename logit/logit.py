@@ -33,6 +33,7 @@ def get_exercise_details(ex, with_delete=True, benchmarks=False):
         rx.td(ex.enum),
         rx.td(ex.reps),
         rx.td(ex.weight),
+        rx.td(ex.rpe),
         rx.td(delete_button)
     )
 
@@ -52,6 +53,7 @@ def exercise_list(body_elements, heading="") -> rx.Component:
                         rx.th("Set"),
                         rx.th("Reps"),
                         rx.th("Kg"),
+                        rx.th("RPE"),
                         rx.th("")
                     )
                 ),
@@ -82,6 +84,10 @@ def new_exercise_selector(row_id: int) -> rx.Component:
         rx.number_input(
             default_value=70,
             on_change=lambda weight: WState.set_weight(row_id, weight)),
+
+        rx.number_input(
+            default_value=8,
+            on_change=lambda weight: WState.set_rpe(row_id, weight)),
 
         rx.checkbox("Benchmark", size="sm", on_change=lambda c: WState.set_is_benchmark(row_id, c)),
 
