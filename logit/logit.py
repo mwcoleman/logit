@@ -201,6 +201,12 @@ def analysis() -> rx.Component:
                         layout=layout_load_intensity      
                     )
     
+def timer() -> rx.Component:
+    return rx.heading(
+        WState.timer_count,
+        on_click=WState.start_timer,
+        _hover={"cursor":"pointer"}
+    )
 
 
 def index() -> rx.Component:
@@ -214,7 +220,9 @@ def index() -> rx.Component:
     return rx.container(
         rx.center(
             rx.grid(
-
+                rx.grid_item(
+                    timer()
+                ),
                 rx.grid_item(
                     new_exercise_selector(row_id=1), row_span=1, col_span=1, align_self="center"
                 ),

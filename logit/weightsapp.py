@@ -92,6 +92,7 @@ class WState(rx.State):
     
 
     # exercise_selector_count: int = 1
+    timer_count: int = 180
 
     exercise_names: List[str] = [
         "Scan",
@@ -212,6 +213,20 @@ class WState(rx.State):
         ).astype(data_types)
         
         return df
+    
+
+    async def tick(self):
+        """Decrement the timer every second"""
+        await asyncio.sleep(1)
+        if self.timer_count > 0:
+            self.timer_count -= 1
+            return WState.tick
+        self.timer_count = 180
+
+        
+    def start_timer(self):
+        return WState.tick
+
     
     ### COMPUTED VARIABLES
 
