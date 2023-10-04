@@ -312,7 +312,7 @@ def index() -> rx.Component:
     #     exercise_list()
 
     # )
-    data = strength_figure(get_stats(), ename='benchpress')
+    # data = strength_figure(get_stats(), ename='benchpress')
     return rx.container(
         rx.center(
             rx.grid(
@@ -328,10 +328,10 @@ def index() -> rx.Component:
                 *new_exercise_selector(1),
                 *new_exercise_selector(2),
                 
-                rx.grid_item(
-                    last_exercise_dashboard(),
-                    col_span=7, row_span=3
-                ),
+                # rx.grid_item(
+                #     last_exercise_dashboard(),
+                #     col_span=7, row_span=3
+                # ),
                ## TODO: Either of these work, but neither able to choose based on current_exercise. 
                 # rx.grid_item(
                 #     rx.plotly(

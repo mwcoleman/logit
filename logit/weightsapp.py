@@ -173,7 +173,7 @@ class WState(rx.State):
     def add_logged_exercise(self, selector_id: int):
 
         with rx.session() as session:
-            model = LoggedBenchmark if self.is_benchmark[selector_id] else LoggedExercise
+            model = LoggedBenchmark if self.is_benchmark else LoggedExercise
 
             matching_exercises = (
                 session.query(model)
@@ -185,7 +185,7 @@ class WState(rx.State):
             
             session.add(
                 model(
-                    created_datetime=self.log_date[selector_id],
+                    created_datetime=self.log_date,
                     ename=self.current_exercise[selector_id],
                     enum=len(matching_exercises),
                     reps=self.reps[selector_id],
@@ -293,9 +293,10 @@ class WState(rx.State):
             except:
                 return []
 
+            print([ex.created_datetime for ex in logged_exercises])
             logged_exercises = sorted(
                 logged_exercises, 
-                key= lambda ex: datetime.strptime(ex.created_datetime, "%d-%m-%y"),
+                # key= lambda ex: datetime.strptime(ex.created_datetime, "%d-%m-%y"),
                 reverse=True,
             )
 
@@ -370,7 +371,7 @@ class WState(rx.State):
         Generate a typical progression from last benchmark for selected exercises
         """
         df = self._log_as_dataframe(model=LoggedExercise)
-        proj = self._log_as_dataframe(model=LoggedExercise)
+        proj = self._log_as_dataframe(model=LoggedBenchmark)
         
         return progression_figure(self.current_exercise.values(), df, proj)
        

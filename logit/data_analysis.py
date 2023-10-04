@@ -81,7 +81,6 @@ def progression_figure(
     progression_rate: % band to project from previous benchmark result
     '''
     fig = go.Figure()
-
     try:
         exercise_df['date'] = exercise_df.date.apply(lambda x: datetime.strptime(x,  "%d-%m-%y"))
         benchmark_df['date'] = benchmark_df.date.apply(lambda x: datetime.strptime(x, "%d-%m-%y"))
@@ -93,8 +92,11 @@ def progression_figure(
         # Dummy
         proj = benchmark_df[benchmark_df.ename==ename]
         if len(proj) == 0:
+            print(f"No Benchmarks {ename}")
+            print(benchmark_df)
             return go.Figure()
         
+        print(proj)
         proj = proj.iloc[0,:]
         
         df = df.groupby('date', as_index=False).aggregate(max_kg=('kg','max'))
