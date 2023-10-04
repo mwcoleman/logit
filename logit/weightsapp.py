@@ -97,7 +97,6 @@ class WState(rx.State):
     timer_running: bool = False
 
     exercise_names: List[str] = [
-        "Scan",
         "deadlift",
         "benchpress",
         "weighted pull-up",
@@ -119,7 +118,7 @@ class WState(rx.State):
     # exercise_counter: dict = {ename:0 for ename in exercise_names}
     
     # Each key represents a different exercise_selector state var
-    current_exercise: Dict[int, str] = {1: exercise_names[0], 2: exercise_names[1], 3: exercise_names[1]}
+    current_exercise: Dict[int, str] = {1: exercise_names[0], 2: exercise_names[0], 3: exercise_names[0]}
     reps: Dict[int, str] = {1: 5, 2: 5, 3: 5}
     weight: Dict[int, float] = {1: 70, 2: 70, 3: 70}
     rpe: Dict[int, int] = {1:8, 2:8, 3:8}
@@ -293,10 +292,9 @@ class WState(rx.State):
             except:
                 return []
 
-            print([ex.created_datetime for ex in logged_exercises])
             logged_exercises = sorted(
                 logged_exercises, 
-                # key= lambda ex: datetime.strptime(ex.created_datetime, "%d-%m-%y"),
+                key= lambda ex: datetime.strptime(ex.created_datetime, "%d-%m-%y"),
                 reverse=True,
             )
 
@@ -337,10 +335,14 @@ class WState(rx.State):
     @rx.var
     def last_logged_exercise_max(self) -> List[LoggedExercise]:
         last_logged_exercises = []
+        enames = []
         with rx.session() as session:
             for selector_id, ename in self.current_exercise.items():
                 if selector_id > 2:
                     break
+                if ename in enames:
+                    continue
+                # print(f"{selector_id=}, {ename=}")
                 statement = (
                     select(LoggedExercise)
                     .where(LoggedExercise.ename == ename)
@@ -356,6 +358,7 @@ class WState(rx.State):
                 results = [r for r in results if r.created_datetime == date]
                 results = sorted(results, key= lambda ex: ex.weight, reverse=True)
                 last_logged_exercises.append(results[0])
+                enames.append(ename)
 
         return last_logged_exercises
     

@@ -15,6 +15,11 @@ from sqlalchemy import Column, DateTime
 import pandas as pd
 import numpy as np
 from plotly.subplots import make_subplots
+from functools import partial
+
+# to_dt = partial()
+def to_dt(text_date):
+    return datetime.strptime(format="%d-%m-%y")
 
 
 # TODO: Currently this cant be a computed var, 'cant pickle'. but the other figure can be....????
@@ -92,13 +97,10 @@ def progression_figure(
         # Dummy
         proj = benchmark_df[benchmark_df.ename==ename]
         if len(proj) == 0:
-            print(f"No Benchmarks {ename}")
-            print(benchmark_df)
+            # print(f"No Benchmarks {ename}")
             return go.Figure()
-        
-        print(proj)
-        proj = proj.iloc[0,:]
-        
+        proj = proj.sort_values(by='date', ascending=False).iloc[0,:]
+        print(proj.date) 
         df = df.groupby('date', as_index=False).aggregate(max_kg=('kg','max'))
 
         future_dates = [proj.date + timedelta(weeks=x) for x in range(8)]

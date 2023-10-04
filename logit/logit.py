@@ -38,7 +38,6 @@ def get_exercise_details(ex, with_delete=True, benchmarks=False):
     )
 
 def exercise_list(body_elements, heading="") -> rx.Component:
-    print(type(body_elements))
     if body_elements is None:
         return rx.text("No data")
     return rx.vstack(
@@ -328,10 +327,10 @@ def index() -> rx.Component:
                 *new_exercise_selector(1),
                 *new_exercise_selector(2),
                 
-                # rx.grid_item(
-                #     last_exercise_dashboard(),
-                #     col_span=7, row_span=3
-                # ),
+                rx.grid_item(
+                    last_exercise_dashboard(),
+                    col_span=7, row_span=3
+                ),
                ## TODO: Either of these work, but neither able to choose based on current_exercise. 
                 # rx.grid_item(
                 #     rx.plotly(
