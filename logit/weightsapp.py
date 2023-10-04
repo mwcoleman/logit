@@ -291,13 +291,13 @@ class WState(rx.State):
                     )
             except:
                 return []
-
+            max_id = max([ex.id for ex in logged_exercises])
             logged_exercises = sorted(
                 logged_exercises, 
-                key= lambda ex: datetime.strptime(ex.created_datetime, "%d-%m-%y"),
+                key= lambda ex: ex.id,#(datetime.strptime(ex.created_datetime, "%d-%m-%y"), max_id - ex.id),
                 reverse=True,
             )
-
+            print([(ex.id, ex.ename) for ex in logged_exercises])
 
             return logged_exercises
     
@@ -387,10 +387,19 @@ class WState(rx.State):
         return self.projected_progression_figure.to_dict()['layout']
 
 
-
+    @rx.var
+    def load_figure_1(self) -> go.Figure:
+        """
+        Generate a load (vol * intensity)
+        """
+        df = self._log_as_dataframe(model=LoggedExercise)
+        ename = self.current_exercise[1]#'deadlift'#self.current_exercise[1]
+        return load_intensity_figure(ename, df)
 
         
-
+    @rx.var
+    def load_layout(self) -> Dict:
+        return self.load_figure_1.to_dict()['layout']
 
         
 

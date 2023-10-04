@@ -97,14 +97,14 @@ def progression_figure(
         # Dummy
         proj = benchmark_df[benchmark_df.ename==ename]
         if len(proj) == 0:
-            # print(f"No Benchmarks {ename}")
+            print(f"No Benchmarks {ename}")
             return go.Figure()
         proj = proj.sort_values(by='date', ascending=False).iloc[0,:]
-        print(proj.date) 
+        # print(proj.date) 
         df = df.groupby('date', as_index=False).aggregate(max_kg=('kg','max'))
 
         future_dates = [proj.date + timedelta(weeks=x) for x in range(8)]
-
+        # print(future_dates)
         l, h = (p/100 for p in progression_rate) if any((p > 1 for p in progression_rate)) else progression_rate
 
         future_kg_min = [proj.kg + (i * l) * proj.kg for i in range(len(future_dates))]
@@ -125,19 +125,19 @@ def progression_figure(
             # From https://plotly.com/python/continuous-error-bars/
             fig.add_trace(
                 go.Scatter(
-                    name='lower', 
+                    name=f'{ename} {progression_rate[0]}%', 
                     x=proj['date'].values, 
                     y=proj['kg_min'],
                     mode='lines',
                     showlegend=False,
                     marker=dict(color='#444'),
                     line=dict(width=0),
-                    hoverinfo='skip'
+                    # hoverinfo='skip'
                 )
             ),
             fig.add_trace(
                 go.Scatter(
-                    name='upper', 
+                    name=f'{ename} {progression_rate[1]}%', 
                     x=proj.date.values, 
                     y=proj['kg_max'], 
                     fill='tonexty', 
@@ -146,9 +146,11 @@ def progression_figure(
                     showlegend=False,
                     marker=dict(color='#444'),
                     line=dict(width=0),
-                    hoverinfo='skip'
+                    # hoverinfo='skip'
                     )#,, )
             )
         except Exception as e:
             print(f'Exception during projected figure! {e}')
+
+        fig.update_layout(title_text="Progression Plan")
     return fig

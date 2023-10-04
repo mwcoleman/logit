@@ -313,7 +313,7 @@ def index() -> rx.Component:
     # )
     # data = strength_figure(get_stats(), ename='benchpress')
     return rx.container(
-        rx.center(
+        rx.box(
             rx.grid(
                 # rx.grid_item(
                 #     timer()
@@ -355,9 +355,19 @@ def index() -> rx.Component:
 
                     rx.plotly(
                         data=WState.projected_progression_figure,
+                        layout=WState.projected_layout,
                         height="400px"
                         ),
                     row_span=3, col_span=7, align_self='center'
+                ),
+
+                rx.grid_item(
+                    rx.plotly(
+                        data=WState.load_figure_1,
+                        layout=WState.load_layout,
+                        height="400px"
+                    ),
+                    col_span=7, row_span=3
                 ),
 
                 rx.grid_item(
@@ -387,8 +397,11 @@ def index() -> rx.Component:
                 template_colums="repeat(7,1fr)",
                 template_rows="repeat(14,fr)",
                 gap=4
+            # ),
             ),
-        )
+            width="50%"
+        ),
+        # center_content=True
     )
 
 app = rx.App()
