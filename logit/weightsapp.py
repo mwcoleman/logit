@@ -93,6 +93,8 @@ class WState(rx.State):
 
     # exercise_selector_count: int = 1
     timer_count: int = 180
+    # timer_start_val: int = 180
+    timer_running: bool = False
 
     exercise_names: List[str] = [
         "Scan",
@@ -122,11 +124,12 @@ class WState(rx.State):
     weight: Dict[int, float] = {1: 70, 2: 70, 3: 70}
     rpe: Dict[int, int] = {1:8, 2:8, 3:8}
 
-    log_date: Dict[int, str] = {1: date.today().strftime("%d-%m-%y"),
-                                2: date.today().strftime("%d-%m-%y"),
-                                3: date.today().strftime("%d-%m-%y")}
-
-    is_benchmark: Dict[int, bool] = {1:False, 2:False, 3:False}
+    # log_date: Dict[int, str] = {1: date.today().strftime("%d-%m-%y"),
+    #                             2: date.today().strftime("%d-%m-%y"),
+    #                             3: date.today().strftime("%d-%m-%y")}
+    log_date: str = date.today().strftime("%d-%m-%y")
+    # is_benchmark: Dict[int, bool] = {1:False, 2:False, 3:False}
+    is_benchmark: bool = False
 
     # TODO: future- Used for selecting dates when returning log
     datepicker: str = None
@@ -146,15 +149,11 @@ class WState(rx.State):
     def set_reps(self, selector_id: int, reps: int):
         self.reps[selector_id] = reps
 
-    def set_log_date(self, selector_id: int, datestr: str):
-        self.log_date[selector_id] = datestr
+    # def set_log_date(self, selector_id: int, datestr: str):
+    #     self.log_date[selector_id] = datestr
 
-    def set_is_benchmark(self, selector_id, flag):
-        self.is_benchmark[selector_id] = flag
-
-    # async def set_rest(self, selector_id: int):
-        #     self.rest[selector_id] = 10
-    #     await self.tick(selector_id)
+    # def set_is_benchmark(self, selector_id, flag):
+    #     self.is_benchmark[selector_id] = flag
 
 
     def delete_logged_exercise(self, id:int, benchmarks: bool):
@@ -200,7 +199,7 @@ class WState(rx.State):
     def _log_as_dataframe(self, model=LoggedExercise) -> pd.DataFrame:
         
         with rx.session() as session:
-            ex_list = session.query(LoggedExercise).all()
+            ex_list = session.query(model).all()
 
         ex_list = [ex._li() for ex in ex_list]  
 
@@ -218,16 +217,29 @@ class WState(rx.State):
     async def tick(self):
         """Decrement the timer every second"""
         await asyncio.sleep(1)
-        if self.timer_count > 0:
-            self.timer_count -= 1
+        if self.timer_running:
+            self.timer_count += 1
             return WState.tick
-        self.timer_count = 180
+        
+        # self.timer_count = self.timer_start_val
 
         
     def start_timer(self):
-        return WState.tick
+        if not self.timer_running:
+            self.timer_running = True
+            self.timer_count = 0
+            return WState.tick
+        else:
+            self.timer_running = False
 
-    
+
+    def export_csv(self):
+        df_exercise = self._log_as_dataframe(model=LoggedExercise)
+        df_benchmark = self._log_as_dataframe(model=LoggedBenchmark)
+
+        df_exercise.to_csv(f"exercise_log_{self.today_date()}.csv")
+        df_benchmark.to_csv(f"benchmark_log_{self.today_date()}.csv")
+
     ### COMPUTED VARIABLES
 
     # @rx.var
@@ -253,7 +265,13 @@ class WState(rx.State):
 
     @rx.var
     def log_as_dataframe(self, model=LoggedExercise) -> pd.DataFrame:
-        return self._log_as_dataframe()
+        """
+        Logged exercises or benchmarks as a dataframe.
+        """
+        return self._log_as_dataframe(model)
+
+
+
     
     @rx.var
     def iterate_logged_exercises(self) -> List[LoggedExercise]:
