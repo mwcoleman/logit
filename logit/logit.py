@@ -359,40 +359,40 @@ def index() -> rx.Component:
                         ),
                     row_span=3, col_span=7, align_self='center'
                 ),
-                ###### TODO: Move to logbook page ####
-                # rx.grid_item(
-                #     rx.plotly(
-                #         data=WState.load_figure_1,
-                #         layout=WState.load_layout,
-                #         height="400px"
-                #     ),
-                #     col_span=7, row_span=3
-                # ),
+                ##### TODO: Move to logbook page ####
+                rx.grid_item(
+                    rx.plotly(
+                        data=WState.load_figure_1,
+                        layout=WState.load_layout,
+                        height="400px"
+                    ),
+                    col_span=7, row_span=3
+                ),
 
-                # rx.grid_item(
-                #     exercise_list(
-                #         body_elements=rx.foreach(
-                #             WState.iterate_logged_exercises,
-                #             lambda ex: get_exercise_details(ex)
-                #         ),
-                #         heading="Log",
-                #     ), 
-                #     row_span=3, 
-                #     col_span=7, 
-                #     align_self="center"
-                # ),
-                # rx.grid_item(
-                #     exercise_list(
-                #         body_elements=rx.foreach(
-                #             WState.iterate_logged_benchmarks,
-                #             lambda ex: get_exercise_details(ex, benchmarks=True)
-                #         ),
-                #         heading="Benchmark Log",
-                #     ), 
-                #     row_span=3, 
-                #     col_span=7, 
-                #     align_self="center"
-                # ),
+                rx.grid_item(
+                    exercise_list(
+                        body_elements=rx.foreach(
+                            WState.iterate_logged_exercises,
+                            lambda ex: get_exercise_details(ex)
+                        ),
+                        heading="Log",
+                    ), 
+                    row_span=3, 
+                    col_span=7, 
+                    align_self="center"
+                ),
+                rx.grid_item(
+                    exercise_list(
+                        body_elements=rx.foreach(
+                            WState.iterate_logged_benchmarks,
+                            lambda ex: get_exercise_details(ex, benchmarks=True)
+                        ),
+                        heading="Benchmark Log",
+                    ), 
+                    row_span=3, 
+                    col_span=7, 
+                    align_self="center"
+                ),
                 #############
                 template_colums="repeat(7,1fr)",
                 template_rows="repeat(14,fr)",
