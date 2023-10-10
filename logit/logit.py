@@ -201,43 +201,49 @@ def new_exercise_selector(row_id: int, spacings=[3, 1, 1, 1, 1]) -> List[rx.Comp
 
 #####
 # TODO: These can be moved to a processing script
-def log_as_df() -> pd.DataFrame:
-    with rx.session() as session:
-        ex_list = session.query(LoggedExercise).all()
+# def log_as_df() -> pd.DataFrame:
+#     with rx.session() as session:
+#         ex_list = session.query(LoggedExercise).all()
 
-    ex_list = [ex._li() for ex in ex_list]  
+#     ex_list = [ex._li() for ex in ex_list]  
 
-    data_columns = ["date", "ename", "enum", "reps", "kg", "rpe"]
-    data_types = {'ename':str, 'enum': int, 'reps': int, 'kg': float, 'rpe':int}
+#     data_columns = ["date", "ename", "enum", "reps", "kg", "rpe"]
+#     data_types = {'ename':str, 'enum': int, 'reps': int, 'kg': float, 'rpe':int}
 
-    df = pd.DataFrame(
-        ex_list,
-        columns=data_columns
-    ).astype(data_types)
+#     df = pd.DataFrame(
+#         ex_list,
+#         columns=data_columns
+#     ).astype(data_types)
 
-    return df
+#     return df
 
-def get_stats() -> pd.DataFrame:
-    # This needs to/should be(?) be done outside of state otherwise 
-    # we can't use it to generate the figure (with current knowledge..)
+# def get_stats() -> pd.DataFrame:
+#     # This needs to/should be(?) be done outside of state otherwise 
+#     # we can't use it to generate the figure (with current knowledge..)
 
-    df = log_as_df()
+#     df = log_as_df()
 
-    df['date'] = df.date.apply(lambda x: datetime.datetime.strptime(x, "%d-%m-%y"))
-    df['load'] = df.reps * df.kg
+#     df['date'] = df.date.apply(lambda x: datetime.datetime.strptime(x, "%d-%m-%y"))
+#     df['load'] = df.reps * df.kg
 
-    grpby = df.groupby(['date','ename'], as_index=False).aggregate(
-        vol=("reps", 'sum'),
-        intensity=("kg", 'max'),
-        load=("load",'sum')
-    )
+#     grpby = df.groupby(['date','ename'], as_index=False).aggregate(
+#         vol=("reps", 'sum'),
+#         intensity=("kg", 'max'),
+#         load=("load",'sum')
+#     )
 
-    return grpby
-
-
+#     return grpby
 
 
 
+# def this_week() -> rx.Component:
+#     """
+#     Return quick summary table of this weeks exercises
+#     """
+#     df = WState.log_as_dataframe()
+#     df = df.date.apply(lambda x: datetime.strptime(x,  "%d-%m-%y"))
+
+#     df = df[df.date > df.date + datetime.timedelta(days)]
 
 
 ######
@@ -285,16 +291,16 @@ def last_exercise_dashboard() -> rx.Component:
     return table
 
 
-def analysis() -> rx.Component:
-    '''Here goes visualisations etc for logbook'''
-    figure_load_intensity = load_intensity_figure('deadlift', log_as_df())
-    layout_load_intensity = figure_load_intensity.to_dict()['layout']
+# def analysis() -> rx.Component:
+#     '''Here goes visualisations etc for logbook'''
+#     figure_load_intensity = load_intensity_figure('deadlift', log_as_df())
+#     layout_load_intensity = figure_load_intensity.to_dict()['layout']
     
-    return rx.plotly(
-                        data=figure_load_intensity,
-                        height='400px',
-                        layout=layout_load_intensity      
-                    )
+#     return rx.plotly(
+#                         data=figure_load_intensity,
+#                         height='400px',
+#                         layout=layout_load_intensity      
+#                     )
     
 def timer() -> rx.Component:
     return rx.heading(
@@ -303,6 +309,23 @@ def timer() -> rx.Component:
         _hover={"cursor":"pointer"}
     )
 
+
+def meso_cycle() -> rx.Component:
+    """
+    Display that shows an 8 week mesocycle of:
+    wk 1: Benchmark + base
+    Wk 2: Load
+    Wk 3: Overload
+    Wk 4: deload
+    Wk 5: base +
+    Wk 6: load +
+    Wk 7: overload +
+    Wk 8: Deload
+
+    Takes last benchmark day across any exercise and shows figure 
+
+    """
+    pass 
 
 def index() -> rx.Component:
     # return rx.container(
@@ -315,12 +338,6 @@ def index() -> rx.Component:
     return rx.container(
         rx.box(
             rx.grid(
-                # rx.grid_item(
-                #     timer()
-                # ),
-                # rx.grid_item(
-                #     date_benchmark_selector(), col_span=7, row_span=1
-                # ),
                 *date_benchmark_selector(),
                 rx.grid_item(rx.spacer(), col_span=7, row_span=1),
                 *exercise_selector_heading(),
@@ -331,26 +348,8 @@ def index() -> rx.Component:
                     last_exercise_dashboard(),
                     col_span=7, row_span=3
                 ),
-               ## TODO: Either of these work, but neither able to choose based on current_exercise. 
-                # rx.grid_item(
-                #     rx.plotly(
-                #         data=load_intensity_figure('deadlift', log_as_df()),
-                #         height='400px',
-                #         layout=data.to_dict()['layout']       
-                #     ),
-                #     row_span=1, col_span=1, align_self='center'
-                # ),
-                # rx.grid_item(
-                #     rx.plotly(
-                #         data=data,
-                #         height='400px',
-                #         layout=data.to_dict()['layout']       
-                #     ),
-                #     row_span=1, col_span=1, align_self='center'
-                # ),
-
-                # Show a typical 8 week progression in +kg
                 
+
                 rx.grid_item(
 
                     rx.plotly(
@@ -360,40 +359,41 @@ def index() -> rx.Component:
                         ),
                     row_span=3, col_span=7, align_self='center'
                 ),
+                ###### TODO: Move to logbook page ####
+                # rx.grid_item(
+                #     rx.plotly(
+                #         data=WState.load_figure_1,
+                #         layout=WState.load_layout,
+                #         height="400px"
+                #     ),
+                #     col_span=7, row_span=3
+                # ),
 
-                rx.grid_item(
-                    rx.plotly(
-                        data=WState.load_figure_1,
-                        layout=WState.load_layout,
-                        height="400px"
-                    ),
-                    col_span=7, row_span=3
-                ),
-
-                rx.grid_item(
-                    exercise_list(
-                        body_elements=rx.foreach(
-                            WState.iterate_logged_exercises,
-                            lambda ex: get_exercise_details(ex)
-                        ),
-                        heading="Log",
-                    ), 
-                    row_span=3, 
-                    col_span=7, 
-                    align_self="center"
-                ),
-                rx.grid_item(
-                    exercise_list(
-                        body_elements=rx.foreach(
-                            WState.iterate_logged_benchmarks,
-                            lambda ex: get_exercise_details(ex, benchmarks=True)
-                        ),
-                        heading="Benchmark Log",
-                    ), 
-                    row_span=3, 
-                    col_span=7, 
-                    align_self="center"
-                ),
+                # rx.grid_item(
+                #     exercise_list(
+                #         body_elements=rx.foreach(
+                #             WState.iterate_logged_exercises,
+                #             lambda ex: get_exercise_details(ex)
+                #         ),
+                #         heading="Log",
+                #     ), 
+                #     row_span=3, 
+                #     col_span=7, 
+                #     align_self="center"
+                # ),
+                # rx.grid_item(
+                #     exercise_list(
+                #         body_elements=rx.foreach(
+                #             WState.iterate_logged_benchmarks,
+                #             lambda ex: get_exercise_details(ex, benchmarks=True)
+                #         ),
+                #         heading="Benchmark Log",
+                #     ), 
+                #     row_span=3, 
+                #     col_span=7, 
+                #     align_self="center"
+                # ),
+                #############
                 template_colums="repeat(7,1fr)",
                 template_rows="repeat(14,fr)",
                 gap=4

@@ -209,7 +209,7 @@ class WState(rx.State):
             ex_list,
             columns=data_columns
         ).astype(data_types)
-        
+ 
         return df
     
 
@@ -289,17 +289,18 @@ class WState(rx.State):
                         .filter(LoggedExercise.created_datetime.contains(self.datepicker))
                         .all()
                     )
+                # Keep this in try wrapper, if empty sequence max() will fail, return []
+                max_id = max([ex.id for ex in logged_exercises])
+                logged_exercises = sorted(
+                    logged_exercises, 
+                    key= lambda ex: ex.id,#(datetime.strptime(ex.created_datetime, "%d-%m-%y"), max_id - ex.id),
+                    reverse=True,
+                )
+                # print([(ex.id, ex.ename) for ex in logged_exercises])
+
+                return logged_exercises
             except:
                 return []
-            max_id = max([ex.id for ex in logged_exercises])
-            logged_exercises = sorted(
-                logged_exercises, 
-                key= lambda ex: ex.id,#(datetime.strptime(ex.created_datetime, "%d-%m-%y"), max_id - ex.id),
-                reverse=True,
-            )
-            print([(ex.id, ex.ename) for ex in logged_exercises])
-
-            return logged_exercises
     
     @rx.var
     def iterate_logged_benchmarks(self) -> List[LoggedBenchmark]:
@@ -362,6 +363,8 @@ class WState(rx.State):
 
         return last_logged_exercises
     
+
+
     # @rx.var
     # def _figure_load_intensity(self) -> go.Figure:
     #     print("HI")
