@@ -11,7 +11,7 @@ import os, datetime
 try:
     from logit.weightsapp import WState
     from logit.weightsapp import LoggedExercise
-    from logit.data_analysis import load_intensity_figure
+    from logit.data_analysis import load_intensity_figure, to_dt
 except:
     from weightsapp import WState, LoggedExercise # for notebook debug
 
@@ -201,21 +201,21 @@ def new_exercise_selector(row_id: int, spacings=[3, 1, 1, 1, 1]) -> List[rx.Comp
 
 #####
 # TODO: These can be moved to a processing script
-# def log_as_df() -> pd.DataFrame:
-#     with rx.session() as session:
-#         ex_list = session.query(LoggedExercise).all()
+def log_as_df() -> pd.DataFrame:
+    with rx.session() as session:
+        ex_list = session.query(LoggedExercise).all()
 
-#     ex_list = [ex._li() for ex in ex_list]  
+    ex_list = [ex._li() for ex in ex_list]  
 
-#     data_columns = ["date", "ename", "enum", "reps", "kg", "rpe"]
-#     data_types = {'ename':str, 'enum': int, 'reps': int, 'kg': float, 'rpe':int}
+    data_columns = ["date", "ename", "enum", "reps", "kg", "rpe"]
+    data_types = {'ename':str, 'enum': int, 'reps': int, 'kg': float, 'rpe':int}
 
-#     df = pd.DataFrame(
-#         ex_list,
-#         columns=data_columns
-#     ).astype(data_types)
+    df = pd.DataFrame(
+        ex_list,
+        columns=data_columns
+    ).astype(data_types)
 
-#     return df
+    return df
 
 # def get_stats() -> pd.DataFrame:
 #     # This needs to/should be(?) be done outside of state otherwise 
@@ -236,14 +236,6 @@ def new_exercise_selector(row_id: int, spacings=[3, 1, 1, 1, 1]) -> List[rx.Comp
 
 
 
-# def this_week() -> rx.Component:
-#     """
-#     Return quick summary table of this weeks exercises
-#     """
-#     df = WState.log_as_dataframe()
-#     df = df.date.apply(lambda x: datetime.strptime(x,  "%d-%m-%y"))
-
-#     df = df[df.date > df.date + datetime.timedelta(days)]
 
 
 ######
@@ -301,6 +293,37 @@ def last_exercise_dashboard() -> rx.Component:
 #                         height='400px',
 #                         layout=layout_load_intensity      
 #                     )
+def _summary_daterange_table(start: datetime.datetime, end: datetime.datetime) -> rx.Component:
+    """
+    Generate table summary of last weeks' exercises
+    """
+    df = log_as_df()
+    df['date'] = df.date.apply(lambda x: to_dt(x))
+    print(start, end)
+    df = df[(df.date >= start) & (df.date < end)]
+    df['date'] = df.date.apply(lambda x: x.strftime("%d-%m-%y"))
+
+    grpby = df.groupby(['ename', 'kg'], as_index=False).aggregate(
+        # sets=("enum", lambda x: len(set(x))),
+        # max_kg=("kg", "max"),
+        volume=("reps", "sum")
+    ).rename(columns={'ename':'exercise'})
+    return rx.data_table(
+        data=grpby
+    )
+
+def last_week_summary() -> rx.Component:
+    end = datetime.datetime.today() - \
+            datetime.timedelta(days=datetime.datetime.today().weekday())
+    start = end - datetime.timedelta(days=7)
+
+    return _summary_daterange_table(start, end)
+
+def this_week_summary() -> rx.Component:
+    end = datetime.datetime.today()
+    start = end - datetime.timedelta(days=end.weekday())
+
+    return _summary_daterange_table(start, end)
     
 def timer() -> rx.Component:
     return rx.heading(
@@ -349,7 +372,14 @@ def index() -> rx.Component:
                     col_span=7, row_span=3
                 ),
                 
-
+                rx.grid_item(
+                    this_week_summary(),
+                    col_span=7, row_span=3
+                ),
+                rx.grid_item(
+                    last_week_summary(),
+                    col_span=7, row_span=3
+                ),
                 rx.grid_item(
 
                     rx.plotly(
@@ -395,7 +425,7 @@ def index() -> rx.Component:
                 ),
                 #############
                 template_colums="repeat(7,1fr)",
-                template_rows="repeat(14,fr)",
+                template_rows="repeat(20,fr)",
                 gap=4
             # ),
             ),

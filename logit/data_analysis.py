@@ -19,7 +19,7 @@ from functools import partial
 
 # to_dt = partial()
 def to_dt(text_date):
-    return datetime.strptime(format="%d-%m-%y")
+    return datetime.strptime(text_date, "%d-%m-%y")
 
 
 # TODO: Currently this cant be a computed var, 'cant pickle'. but the other figure can be....????
@@ -153,4 +153,5 @@ def progression_figure(
             print(f'Exception during projected figure! {e}')
 
         fig.update_layout(title_text="Progression Plan")
+
     return fig
