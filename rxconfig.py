@@ -6,7 +6,7 @@ import reflex as rx
 config = rx.Config(
     app_name="logit",
     db_url="sqlite:///data.db",
-    api_url="http://192.168.1.28:3988",
+    api_url="http://localhost:3988",
     # backend_port="4000"
     # cors_allowed_origins=
 )

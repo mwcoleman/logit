@@ -186,7 +186,7 @@ class WState(rx.State):
                 model(
                     created_datetime=self.log_date,
                     ename=self.current_exercise[selector_id],
-                    enum=len(matching_exercises),
+                    enum=len(matching_exercises) + 1,
                     reps=self.reps[selector_id],
                     weight=self.weight[selector_id],
                     rpe=self.rpe[selector_id]
