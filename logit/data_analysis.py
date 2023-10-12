@@ -17,6 +17,12 @@ import numpy as np
 from plotly.subplots import make_subplots
 from functools import partial
 
+
+
+def estimate_1rm(reps, kg):
+    # Brzycki formula
+    return kg / (1.0278 - 0.0278 * reps)
+
 # to_dt = partial()
 def to_dt(text_date):
     return datetime.strptime(text_date, "%d-%m-%y")
@@ -93,7 +99,7 @@ def progression_figure(
         pass
     
     for ename in enames: 
-        df = exercise_df[exercise_df.ename==ename]
+        df_filtered = exercise_df[exercise_df.ename==ename]
         # Dummy
         proj = benchmark_df[benchmark_df.ename==ename]
         if len(proj) == 0:
@@ -101,7 +107,15 @@ def progression_figure(
             return go.Figure()
         proj = proj.sort_values(by='date', ascending=False).iloc[0,:]
         # print(proj.date) 
-        df = df.groupby('date', as_index=False).aggregate(max_kg=('kg','max'))
+        df = df_filtered.groupby('date', as_index=False).aggregate(
+            max_kg=('kg','max')
+            )
+        # obtain reps for max kg
+        df['reps'] = df.max_kg.apply(lambda x: df_filtered[df_filtered.kg==x]['reps'].max())
+        
+        # Convert to 1rm estimate
+        
+        df['1rm_estimate'] = df.apply(lambda x: estimate_1rm(x.reps, x.max_kg), axis=1)
 
         future_dates = [proj.date + timedelta(weeks=x) for x in range(8)]
         # print(future_dates)
@@ -118,7 +132,7 @@ def progression_figure(
                 go.Scatter(
                     name=f'Logged {ename}',
                     x=df['date'].values, 
-                    y=df['max_kg'],
+                    y=df['1rm_estimate'],
                     showlegend=False,
                 )#, mode='lines')
             )

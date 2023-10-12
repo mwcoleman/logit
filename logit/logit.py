@@ -217,55 +217,6 @@ def log_as_df() -> pd.DataFrame:
 
     return df
 
-# def get_stats() -> pd.DataFrame:
-#     # This needs to/should be(?) be done outside of state otherwise 
-#     # we can't use it to generate the figure (with current knowledge..)
-
-#     df = log_as_df()
-
-#     df['date'] = df.date.apply(lambda x: datetime.datetime.strptime(x, "%d-%m-%y"))
-#     df['load'] = df.reps * df.kg
-
-#     grpby = df.groupby(['date','ename'], as_index=False).aggregate(
-#         vol=("reps", 'sum'),
-#         intensity=("kg", 'max'),
-#         load=("load",'sum')
-#     )
-
-#     return grpby
-
-
-
-
-
-######
-
-
-def strength_figure(df: pd.DataFrame, ename: str) -> go.Figure:
-    # df.columns= ['date', 'ename', 'vol', 'intensity', 'load']
-    metrics = ['load', 'intensity']
-
-    data = df[df.ename==ename]
-    # fig = px.line(data, x='date', y='intensity', title='intensity')
-    # return fig
-    y_label = ['Total Kg Moved', 'Max Kg Moved']
-
-    fig = make_subplots(specs=[[{'secondary_y':True}]])
-
-    # Add traces
-    for i,metric in enumerate(metrics):
-        fig.add_trace(
-            go.Scatter(
-                x=data['date'].values, y=data[metric], name=metric, #mode='lines'
-            ),
-            secondary_y=i==1
-        )
-        
-        fig.update_yaxes(title_text=y_label[i], secondary_y=(i==1))
-
-    # fig.update_layout(title_text=ename)
-    fig.update_xaxes(title_text='Date')
-    return fig
 
 def last_exercise_dashboard() -> rx.Component:
     ex_list = WState.last_logged_exercise_max
@@ -304,7 +255,7 @@ def _summary_daterange_table(start: datetime.datetime, end: datetime.datetime) -
     df['date'] = df.date.apply(lambda x: x.strftime("%d-%m-%y"))
 
     grpby = df.groupby(['ename', 'kg'], as_index=False).aggregate(
-        # sets=("enum", lambda x: len(set(x))),
+        sets=("enum", lambda x: len(set(x))),
         # max_kg=("kg", "max"),
         volume=("reps", "sum")
     ).rename(columns={'ename':'exercise'})
@@ -317,13 +268,19 @@ def last_week_summary() -> rx.Component:
             datetime.timedelta(days=datetime.datetime.today().weekday())
     start = end - datetime.timedelta(days=7)
 
-    return _summary_daterange_table(start, end)
+    return rx.box(
+        rx.center(rx.heading("Last Week")),
+        _summary_daterange_table(start, end)
+    )
 
 def this_week_summary() -> rx.Component:
     end = datetime.datetime.today()
     start = end - datetime.timedelta(days=end.weekday())
 
-    return _summary_daterange_table(start, end)
+    return rx.box(
+        rx.center(rx.heading("This Week")),
+        _summary_daterange_table(start, end)
+    )
     
 def timer() -> rx.Component:
     return rx.heading(
@@ -367,11 +324,11 @@ def index() -> rx.Component:
                 *new_exercise_selector(1),
                 *new_exercise_selector(2),
                 
-                rx.grid_item(
-                    last_exercise_dashboard(),
-                    col_span=7, row_span=3
-                ),
-                
+                # rx.grid_item(
+                #     last_exercise_dashboard(),
+                #     col_span=7, row_span=3
+                # ),
+
                 rx.grid_item(
                     this_week_summary(),
                     col_span=7, row_span=3
