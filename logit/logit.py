@@ -244,43 +244,99 @@ def last_exercise_dashboard() -> rx.Component:
 #                         height='400px',
 #                         layout=layout_load_intensity      
 #                     )
-def _summary_daterange_table(start: datetime.datetime, end: datetime.datetime) -> rx.Component:
+def _summary_daterange_df(
+        start: datetime.datetime, 
+        end: datetime.datetime,
+        return_summary=True
+    ) -> rx.Component:
     """
-    Generate table summary of last weeks' exercises
+    Generate table summary of last weeks' exercises.
+    if return_summary, sums volume by exercise else return raw df
     """
     df = log_as_df()
     df['date'] = df.date.apply(lambda x: to_dt(x))
     print(start, end)
     df = df[(df.date >= start) & (df.date < end)]
     df['date'] = df.date.apply(lambda x: x.strftime("%d-%m-%y"))
-
+    
     grpby = df.groupby(['ename', 'kg'], as_index=False).aggregate(
         sets=("enum", lambda x: len(set(x))),
         # max_kg=("kg", "max"),
         volume=("reps", "sum")
     ).rename(columns={'ename':'exercise'})
-    return rx.data_table(
-        data=grpby
+    
+    return grpby if return_summary else df
+
+
+def _week_summary_table(
+        df, 
+        cols=['Exercise', 'kg', 'sets', 'volume']
+        ) -> rx.Component:
+    # Return the df as a table to stop glitching
+
+    if len(df) is None:
+        return rx.text("No data")
+    
+    df_rows = [row[1].tolist() for row in df.iterrows()]
+    table_rows = [rx.tr(*[rx.td(item) for item in row]) for row in df_rows]
+
+    return rx.table_container(
+            rx.table(
+                rx.thead(
+                    rx.tr(
+                        *[rx.th(c) for c in cols]
+                        # rx.th("Exercise"),
+                        # rx.th("kg"),
+                        # rx.th("sets"),
+                        # rx.th("volume"),
+                    )
+                ),
+                rx.tbody(*table_rows)
+            )   
+        )
+
+def week_summary(week='last') -> rx.Component:
+    """
+    Returns week summary in a table. native DF support from rx.data_table
+    causes page glitch every refresh (lag as DF is populated?). So use tables instead 
+    
+    """
+    assert week=='last' or week=='this'
+
+    if week=='last':
+        end = datetime.datetime.today() - \
+                datetime.timedelta(days=datetime.datetime.today().weekday())
+        start = end - datetime.timedelta(days=7)
+    else:
+        end = datetime.datetime.today()
+        start = end - datetime.timedelta(days=end.weekday())
+
+    df = _summary_daterange_df(start, end)
+    load_df = _summary_daterange_df(start, end, return_summary=False)
+    load_df['load'] = load_df.kg * load_df.reps
+    load_df = (
+        load_df.groupby('ename', as_index=False)
+               .aggregate(load=('load', 'sum'))
     )
 
-def last_week_summary() -> rx.Component:
-    end = datetime.datetime.today() - \
-            datetime.timedelta(days=datetime.datetime.today().weekday())
-    start = end - datetime.timedelta(days=7)
+    # tot_load = (df.kg * df.volume).sum()
 
-    return rx.box(
-        rx.center(rx.heading("Last Week")),
-        _summary_daterange_table(start, end)
+    return rx.vstack(
+        rx.heading(f"{week} Week".title()),
+        
+        # _week_summary_table(load_df, cols=['Exercise', 'Load (kg)']),
+        _week_summary_table(df),
+        width='100%'
     )
 
-def this_week_summary() -> rx.Component:
-    end = datetime.datetime.today()
-    start = end - datetime.timedelta(days=end.weekday())
 
-    return rx.box(
-        rx.center(rx.heading("This Week")),
-        _summary_daterange_table(start, end)
-    )
+# def this_week_summary() -> rx.Component:
+#     end = datetime.datetime.today()
+#     start = end - datetime.timedelta(days=end.weekday())
+
+#     return _week_summary_table(
+#         _summary_daterange_df(start, end), "This Week"
+#     )
     
 def timer() -> rx.Component:
     return rx.heading(
@@ -328,15 +384,22 @@ def index() -> rx.Component:
                 #     last_exercise_dashboard(),
                 #     col_span=7, row_span=3
                 # ),
-
                 rx.grid_item(
-                    this_week_summary(),
+                    rx.hstack(
+                        week_summary('this'),
+                        week_summary('last'),
+                        align_items="top"
+                    ),
                     col_span=7, row_span=3
                 ),
-                rx.grid_item(
-                    last_week_summary(),
-                    col_span=7, row_span=3
-                ),
+                # rx.grid_item(
+                #     this_week_summary(),
+                #     col_span=7, row_span=3
+                # ),
+                # rx.grid_item(
+                #     last_week_summary(),
+                #     col_span=7, row_span=3
+                # ),
                 rx.grid_item(
 
                     rx.plotly(
