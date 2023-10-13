@@ -16,7 +16,7 @@ import pandas as pd
 import numpy as np
 from plotly.subplots import make_subplots
 from functools import partial
-
+from typing import Tuple, List, Dict, Set
 
 
 def estimate_1rm(reps, kg):
@@ -26,6 +26,95 @@ def estimate_1rm(reps, kg):
 # to_dt = partial()
 def to_dt(text_date):
     return datetime.strptime(text_date, "%d-%m-%y")
+
+def this_week_dates() -> Tuple[datetime, datetime]:
+    end = datetime.today()
+    start = end - timedelta(days=end.weekday())
+    return (start, end)
+
+def last_week_dates() -> Tuple[datetime, datetime]:
+    end = datetime.today() - \
+            timedelta(days=datetime.today().weekday())
+    start = end - timedelta(days=7)
+    return (start, end)
+
+def summary_daterange_df(
+        df,
+        start: datetime, 
+        end: datetime,
+        ename: Set[str] = None,
+        return_summary=True
+    ) -> rx.Component:
+    """
+    Filter a dataframe by date range, and
+    if return_summary, returns a grouped df with summed volume by exercise,
+    else return raw df
+    """
+    # df = log_as_df()
+    try:
+        df['date'] = df.date.apply(lambda x: to_dt(x))
+    except TypeError:
+        # Already dt
+        pass
+    print(start, end)
+    df = df[(df.date >= start) & (df.date < end)]
+    df.loc[:,'date'] = df.date.apply(lambda x: x.strftime("%d-%m-%y"))
+    
+    if ename is not None:
+        df = df[df.ename.isin(ename)]
+
+    grpby = df.groupby(['ename', 'kg'], as_index=False).aggregate(
+        sets=("enum", lambda x: len(set(x))),
+        # max_kg=("kg", "max"),
+        volume=("reps", "sum")
+    ).rename(columns={'ename':'exercise'})
+    
+    return grpby if return_summary else df
+
+def stat_block_summary(
+        raw_df: pd.DataFrame,
+        ename: Set[str],
+        this_week_range: Tuple[datetime],
+        last_week_range: Tuple[datetime] = None,
+        stat: str = 'load',
+        comparison: str = 'absolute'
+        ) -> Tuple[str, float, float]:
+    '''
+    Compute, for ename, 1) single value summary statistic for this week (e.g. load)
+    and 2) relative change (%)
+    stat is one of 'load', 'max_kg', 'volume', 'vol_at_max'
+    df is raw log_as_df()
+    '''
+    def _stat_value(df, stat):
+        if stat == 'load':
+            stat_val = (df.reps * df.kg).sum()
+        elif stat == 'volume':
+            stat_val = df.reps.sum()
+        elif stat == 'max_kg':
+            stat_val = df.kg.max()
+        else:
+            stat_val = 0
+        return stat_val
+    
+    df = summary_daterange_df(raw_df, *this_week_range, ename, return_summary=False)
+    # print(df)
+    this_week_stat_val = 0 if len(df) == 0 else  _stat_value(df, stat)
+    
+    if last_week_range is not None:
+        last_df = summary_daterange_df(raw_df, *last_week_range, ename, return_summary=False)
+        last_week_stat_val = _stat_value(last_df, stat)
+        
+        if comparison=='relative':
+            last_week_stat_val = (this_week_stat_val - last_week_stat_val) / \
+                     this_week_stat_val
+    else:
+        last_week_stat_val = 0
+
+    # print(last_week_stat_val)
+    return ename, this_week_stat_val, last_week_stat_val
+
+
+
 
 
 # TODO: Currently this cant be a computed var, 'cant pickle'. but the other figure can be....????
@@ -104,8 +193,20 @@ def progression_figure(
         proj = benchmark_df[benchmark_df.ename==ename]
         if len(proj) == 0:
             print(f"No Benchmarks {ename}")
-            return go.Figure()
+            return fig
         proj = proj.sort_values(by='date', ascending=False).iloc[0,:]
+
+        if proj.date.date() < date.today() - timedelta(weeks=8):
+            fig.update_layout(title_text=f'Last benchmark for {ename} was {proj.date.strftime("%d-%m")}') 
+            # fig.add_annotation(dict(
+            #     font=dict(color='yellow', size=15),
+            #     x=10,
+            #     y=-0.12,
+            #     showarrow=False,
+            #     text=f'Last benchmark for {ename} was {proj.date.strftime("%d-%m")}'
+            # ))
+            return fig
+
         # print(proj.date) 
         df = df_filtered.groupby('date', as_index=False).aggregate(
             max_kg=('kg','max')

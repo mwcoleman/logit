@@ -3,17 +3,25 @@ from sqlmodel import select
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from typing import List
+from typing import List, Tuple
 import numpy as np
 import pandas as pd
-import os, datetime
+import os
+from datetime import datetime, timedelta, date
 
-try:
-    from logit.weightsapp import WState
-    from logit.weightsapp import LoggedExercise
-    from logit.data_analysis import load_intensity_figure, to_dt
-except:
-    from weightsapp import WState, LoggedExercise # for notebook debug
+# try:
+from logit.weightsapp import WState
+from logit.weightsapp import LoggedExercise
+from logit.data_analysis import (
+    load_intensity_figure, 
+    to_dt, 
+    summary_daterange_df, 
+    this_week_dates, 
+    last_week_dates,
+    stat_block_summary
+)
+# except:
+#     from weightsapp import WState, LoggedExercise # for notebook debug
 
 def get_exercise_details(ex, with_delete=True, benchmarks=False):
     
@@ -63,21 +71,7 @@ def exercise_list(body_elements, heading="") -> rx.Component:
         )
     , width="100%") 
 
-def date_benchmark_selector(spacings=[2,2,3]) -> List[rx.Component]:
-    
-    # def timer_component() -> rx.Component:
-    #     return rx.card(
-    #         rx.vstack(
-    #             rx.hstack(
-    #                 rx.number_input(
-    #                     default_value=180,
-    #                     on_change=WState.set_timer_start_val
-    #                 ),
-    #                 rx.button("Go", on_click=WState.start_timer)
-    #             ),
-    #             rx.text(WState.timer_count)
-    #         )
-    #     )
+def date_benchmark_selector(spacings=[1,1,3,2]) -> List[rx.Component]:
     
     return [
         rx.grid_item(
@@ -113,6 +107,10 @@ def date_benchmark_selector(spacings=[2,2,3]) -> List[rx.Component]:
             ),
             col_span=spacings[2],
             row_span=2
+        ),
+        rx.grid_item(
+            rx.card(stat_block()),
+            col_span=spacings[3], row_span=2
         )
     ]
 
@@ -200,7 +198,7 @@ def new_exercise_selector(row_id: int, spacings=[3, 1, 1, 1, 1]) -> List[rx.Comp
     ]
 
 #####
-# TODO: These can be moved to a processing script
+# TODO: This should be, but, can't be moved to a processing script- (circular imports?)
 def log_as_df() -> pd.DataFrame:
     with rx.session() as session:
         ex_list = session.query(LoggedExercise).all()
@@ -234,45 +232,13 @@ def last_exercise_dashboard() -> rx.Component:
     return table
 
 
-# def analysis() -> rx.Component:
-#     '''Here goes visualisations etc for logbook'''
-#     figure_load_intensity = load_intensity_figure('deadlift', log_as_df())
-#     layout_load_intensity = figure_load_intensity.to_dict()['layout']
-    
-#     return rx.plotly(
-#                         data=figure_load_intensity,
-#                         height='400px',
-#                         layout=layout_load_intensity      
-#                     )
-def _summary_daterange_df(
-        start: datetime.datetime, 
-        end: datetime.datetime,
-        return_summary=True
-    ) -> rx.Component:
-    """
-    Generate table summary of last weeks' exercises.
-    if return_summary, sums volume by exercise else return raw df
-    """
-    df = log_as_df()
-    df['date'] = df.date.apply(lambda x: to_dt(x))
-    print(start, end)
-    df = df[(df.date >= start) & (df.date < end)]
-    df['date'] = df.date.apply(lambda x: x.strftime("%d-%m-%y"))
-    
-    grpby = df.groupby(['ename', 'kg'], as_index=False).aggregate(
-        sets=("enum", lambda x: len(set(x))),
-        # max_kg=("kg", "max"),
-        volume=("reps", "sum")
-    ).rename(columns={'ename':'exercise'})
-    
-    return grpby if return_summary else df
-
-
-def _week_summary_table(
+def df_as_table(
         df, 
         cols=['Exercise', 'kg', 'sets', 'volume']
         ) -> rx.Component:
-    # Return the df as a table to stop glitching
+    '''
+    Generic method to present dataframe data as a table, prevent the refresh glitching
+    '''
 
     if len(df) is None:
         return rx.text("No data")
@@ -285,10 +251,6 @@ def _week_summary_table(
                 rx.thead(
                     rx.tr(
                         *[rx.th(c) for c in cols]
-                        # rx.th("Exercise"),
-                        # rx.th("kg"),
-                        # rx.th("sets"),
-                        # rx.th("volume"),
                     )
                 ),
                 rx.tbody(*table_rows)
@@ -303,46 +265,41 @@ def week_summary(week='last') -> rx.Component:
     """
     assert week=='last' or week=='this'
 
-    if week=='last':
-        end = datetime.datetime.today() - \
-                datetime.timedelta(days=datetime.datetime.today().weekday())
-        start = end - datetime.timedelta(days=7)
-    else:
-        end = datetime.datetime.today()
-        start = end - datetime.timedelta(days=end.weekday())
+    start, end = last_week_dates() if week=='last' else this_week_dates()
 
-    df = _summary_daterange_df(start, end)
-    load_df = _summary_daterange_df(start, end, return_summary=False)
-    load_df['load'] = load_df.kg * load_df.reps
-    load_df = (
-        load_df.groupby('ename', as_index=False)
-               .aggregate(load=('load', 'sum'))
-    )
 
-    # tot_load = (df.kg * df.volume).sum()
+    # df of exercise, kg, sets, vol
+    df = summary_daterange_df(log_as_df(), start, end)
+
+    ## TODO: Optional: df of exercise, load
+    # load_df = _summary_daterange_df(start, end, return_summary=False)
+    # load_df['load'] = load_df.kg * load_df.reps
+    # load_df = (
+    #     load_df.groupby('ename', as_index=False)
+    #            .aggregate(load=('load', 'sum'))
+    # )
 
     return rx.vstack(
         rx.heading(f"{week} Week".title()),
-        
         # _week_summary_table(load_df, cols=['Exercise', 'Load (kg)']),
-        _week_summary_table(df),
+        df_as_table(df),
         width='100%'
     )
-
-
-# def this_week_summary() -> rx.Component:
-#     end = datetime.datetime.today()
-#     start = end - datetime.timedelta(days=end.weekday())
-
-#     return _week_summary_table(
-#         _summary_daterange_df(start, end), "This Week"
-#     )
     
 def timer() -> rx.Component:
     return rx.heading(
         WState.timer_count,
         on_click=WState.start_timer,
         _hover={"cursor":"pointer"}
+    )
+
+
+def stat_block() -> rx.Component:
+    
+    return rx.stat(
+        # rx.stat_label(f'Load'),
+        rx.stat_number(f'{WState.weekly_load[1]}'),
+        rx.stat_help_text(f'{WState.weekly_load[2]}')
     )
 
 
@@ -379,7 +336,6 @@ def index() -> rx.Component:
                 *exercise_selector_heading(),
                 *new_exercise_selector(1),
                 *new_exercise_selector(2),
-                
                 # rx.grid_item(
                 #     last_exercise_dashboard(),
                 #     col_span=7, row_span=3

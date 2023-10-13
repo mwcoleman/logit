@@ -6,18 +6,18 @@ import reflex as rx
 from collections import defaultdict
 import os
 from sqlmodel import Field, Session, SQLModel, create_engine, select, TIMESTAMP, Column, text
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 from datetime import datetime, date, timedelta
 from sqlalchemy.sql import func
 from sqlalchemy import Column, DateTime
 import pandas as pd
 import numpy as np
 
-try:
-    from logit.data_analysis import progression_figure, load_intensity_figure
-except:
-    # For notebook debug
-    from data_analysis import progression_figure, load_intensity_figure
+# try:
+from logit.data_analysis import progression_figure, load_intensity_figure, stat_block_summary, this_week_dates, last_week_dates
+# except:
+#     # For notebook debug
+#     from data_analysis import progression_figure, load_intensity_figure
 
 # from datetime import date, datetime
 class LoggedExercise(rx.Model, table=True):
@@ -403,6 +403,21 @@ class WState(rx.State):
     @rx.var
     def load_layout(self) -> Dict:
         return self.load_figure_1.to_dict()['layout']
+    
+    @rx.var
+    def weekly_load(self) -> Tuple[str, float, float]:
+        df = self._log_as_dataframe()
+        enames = set(df.ename.tolist())
+        # print(last_week_dates())
+        # print(this_week_dates())
+        return stat_block_summary(
+            self._log_as_dataframe(),
+            enames,
+            this_week_dates(),
+            last_week_dates(),
+            stat='load',
+
+        )
 
         
 
