@@ -126,21 +126,33 @@ def load_intensity_figure(ename: str, df: pd.DataFrame) -> go.Figure:
     ename: string of exercise
     returns: go.Figure
     '''
-    
 
     # Groupby date and generate statistics
     try:
         df['date'] = df.date.apply(lambda x: datetime.strptime(x, "%d-%m-%y"))
     except:
         pass
-    df['load'] = df.reps * df.kg
+    df['load'] = df.reps * df.kg * df.rpe
+    start_days_after_monday = timedelta(days=df.date.min().weekday())
+    end_days_before_monday = timedelta(days=(7 - date.today().weekday()))
 
-    grp = df.groupby(['date','ename'], as_index=False).aggregate(
-        vol=("reps", 'sum'),
-        intensity=("kg", 'max'),
-        load=("load",'sum')
-    )
-
+    try:
+        bins = pd.date_range(start=df.date.min() - start_days_after_monday, end=date.today() + end_days_before_monday, freq='7D', inclusive='both')
+    except Exception as e:
+        print(e)
+    df['week'] = pd.cut(df.date, bins=bins, right=False, include_lowest=True)
+    df['week'] = df.week.apply(lambda x: x.right)
+    
+    try:
+        grp = df.groupby(['week','ename'], as_index=True).aggregate(
+            vol=("reps", 'sum'),
+            intensity=("kg", 'max'),
+            load=("load",'sum')
+        ).reset_index(names=['week', 'ename', 'vol', 'intensity', 'load'])
+        grp.intensity.fillna(0, inplace=True)
+        # grp['week'] = grp.week.dt.strftime("%y-%m-%d")
+    except Exception as e:
+        print(e)
     # What we care about and corresponding labels
     metrics = ['load', 'intensity']
     y_label = ['Total Kg Moved', 'Max Kg Moved']
@@ -154,7 +166,7 @@ def load_intensity_figure(ename: str, df: pd.DataFrame) -> go.Figure:
     for i,metric in enumerate(metrics):
         fig.add_trace(
             go.Scatter(
-                x=data['date'].values, 
+                x=data['week'].values, 
                 y=data[metric], 
                 name=metric, 
             ),
@@ -162,9 +174,14 @@ def load_intensity_figure(ename: str, df: pd.DataFrame) -> go.Figure:
         )
         
         fig.update_yaxes(title_text=y_label[i], secondary_y=(i==1))
-
+    # RX requires plotly layout values (e.g. tickvalues) to be text, not ndarray or dt objects.
+    # Plotly also by default interprets dates as yy-mm-dd
+    tv = data.week.sort_values().dt.strftime("%y-%m-%d").tolist()
+    tt = tv
+    
     fig.update_layout(title_text=ename)
-    fig.update_xaxes(title_text='Date')
+    fig.update_xaxes(title_text='Week Ending', tickvals=tv, ticktext=tt, tickangle=-45)
+
 
     
     return fig
@@ -268,5 +285,15 @@ def progression_figure(
             print(f'Exception during projected figure! {e}')
 
         fig.update_layout(title_text="Progression Plan")
+        tv = proj.date.sort_values().dt.strftime("%y-%m-%d").tolist()
+        tt = tv
+        
+        # fig.update_layout(title_text=ename)
+        fig.update_xaxes(
+            title_text='Week Beginning', 
+            tickvals=tv, 
+            ticktext=tt, 
+            tickangle=-45, 
+            minor=dict(ticks='inside', showgrid=True, dtick=24*60*60*1000, griddash='dot', gridcolor='white'))
 
     return fig

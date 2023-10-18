@@ -87,6 +87,7 @@ def date_benchmark_selector(spacings=[1,1,3,2]) -> List[rx.Component]:
             col_span=spacings[0],
             row_span=2,
         ),
+
         rx.grid_item(
             rx.card(
                 rx.checkbox(
@@ -98,9 +99,8 @@ def date_benchmark_selector(spacings=[1,1,3,2]) -> List[rx.Component]:
             col_span=spacings[1],
             row_span=2
         ),
-        rx.grid_item(
 
-        
+        rx.grid_item(
             rx.card(
                 timer(),
                 header=rx.heading("Timer", size="sm"), size="sm"
@@ -280,7 +280,7 @@ def week_summary(week='last') -> rx.Component:
     # )
 
     return rx.vstack(
-        rx.heading(f"{week} Week".title()),
+        # rx.heading(f"{week} Week".title()),
         # _week_summary_table(load_df, cols=['Exercise', 'Load (kg)']),
         df_as_table(df),
         width='100%'
@@ -320,6 +320,16 @@ def meso_cycle() -> rx.Component:
     """
     pass 
 
+
+def prilepin() -> rx.Component:
+    return rx.vstack(
+        rx.heading("Chart"),
+        rx.number_input(default_value=100, on_change=WState.set_custom_1rm),
+        rx.data_table(
+            data=WState.custom_1rm_rel_intensity
+        )
+    )
+
 def index() -> rx.Component:
     # return rx.container(
     #     new_exercise_selector(),
@@ -347,6 +357,9 @@ def index() -> rx.Component:
                         align_items="top"
                     ),
                     col_span=7, row_span=3
+                ),
+                rx.grid_item(
+                    prilepin(), col_span=7, row_span=6
                 ),
                 # rx.grid_item(
                 #     this_week_summary(),

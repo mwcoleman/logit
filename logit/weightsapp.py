@@ -113,7 +113,29 @@ class WState(rx.State):
                               .strftime("%d-%m-%y")
                               for x in range(365)]
 
+    custom_1rm: float = 100
+    
 
+    @rx.var
+    def custom_1rm_rel_intensity(self) -> pd.DataFrame:
+        print(self.custom_1rm)
+        try:
+            # index_col_names = ["max", "heavy", "mod", "mod-", "light+", "light-"]
+            index_col = [100, 90, 85, 80, 75, 70]
+            index_col_kg = np.array([self.custom_1rm * derat/100 for derat in index_col])
+            relative_intensity = np.array([100, 95, 92.5, 90, 87.5, 85, 82.5, 80])
+            bc_array = index_col_kg.reshape(-1, 1) * relative_intensity.reshape(1, -1) / 100
+            # bc_array = np.ndarray(index_col_kg).astype(float) * np.ndarray(relative_intensity).astype(float).reshape(1,-1)/100
+            df = pd.DataFrame(bc_array.round(1), 
+                              columns=[f"{x+1}x" for x in list(range(len(relative_intensity)))],
+                              index=index_col)
+            df['load'] = [f"{x}%" for x in index_col]
+            df = df[['load', *[c for c in df.columns if c!='load']]]
+            print(df)
+        except Exception as e:
+            print(e)
+        return df
+    
     # total_set_number: int = 1
     # exercise_counter: dict = {ename:0 for ename in exercise_names}
     
